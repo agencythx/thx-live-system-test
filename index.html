@@ -435,9 +435,14 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex}
 // CONFIG SUPABASE
 // ============================================================
 const SUPABASE_URL = 'https://rbxozrqtblxcbivwfwbm.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_VF9t-WDjqLX59u-Z45cGzA_NyFn7gt3';
+// GANTI dengan anon key dari: Supabase Dashboard > Settings > API > anon public
+const SUPABASE_KEY = localStorage.getItem('thx_sb_key') || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJieG96cnF0Ymx4Y2Jpdndmd2JtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1NTM4ODksImV4cCI6MjA5ODEyOTg4OX0.EoWGo_FwWfFQuRTkF6VAVYAb2UY8XcKkiVf4i6NdLx4';
 let sb = null;
-try { sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch(e){}
+function initSupabase(url, key) {
+  try { sb = supabase.createClient(url, key); return true; }
+  catch(e) { console.warn('Supabase init:', e); return false; }
+}
+initSupabase(SUPABASE_URL, SUPABASE_KEY);
 
 // ============================================================
 // STATE
@@ -458,7 +463,7 @@ async function init() {
   document.getElementById('inv-f-date').value = today;
   document.getElementById('ld-month').value = today.slice(0,7);
   document.getElementById('set-url').value = SUPABASE_URL;
-  document.getElementById('set-key').value = SUPABASE_KEY;
+  document.getElementById('set-key').value = localStorage.getItem('thx_sb_key') || '';
 
   await Promise.all([loadBrands(), loadHosts()]);
   await loadSessions();
@@ -590,8 +595,8 @@ function renderSchedule() {
   const hostSet = new Set(filtered.flatMap(s=>s.host_ids||[]));
   document.getElementById('ss-hosts').textContent = hostSet.size;
 
-  // Grid
-  const hours = Array.from({length:19},(_,i)=>i+6);
+  // Grid 00:00 - 23:00
+  const hours = Array.from({length:24},(_,i)=>i);
   let html = '<thead><tr><th class="th-time">Jam</th>';
   dates.forEach(d => { html += `<th>${fmtDisplay(d)}</th>`; });
   html += '</tr></thead><tbody>';
@@ -1194,11 +1199,12 @@ function goPage(id, el) {
 // ============================================================
 function saveSettings() {
   const url = document.getElementById('set-url').value;
-  const key = document.getElementById('set-key').value;
+  const key = document.getElementById('set-key').value.trim();
   try {
     sb = supabase.createClient(url, key);
-    document.getElementById('conn-status').innerHTML = '<span style="color:var(--success)"><i class="ti ti-check"></i> Tersambung ke Supabase!</span>';
-    init();
+    localStorage.setItem('thx_sb_key', key);
+    document.getElementById('conn-status').innerHTML = '<span style="color:var(--success)"><i class="ti ti-check"></i> Tersambung! Data akan dimuat ulang...</span>';
+    setTimeout(() => init(), 500);
   } catch(e) {
     document.getElementById('conn-status').innerHTML = '<span style="color:var(--danger)">Error: '+e.message+'</span>';
   }
