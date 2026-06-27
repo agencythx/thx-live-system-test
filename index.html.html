@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>THX Agency · Live Operation System</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/dist/tabler-icons.min.css">
+<style>
+:root{
+  --bg:#f7f7f5;--surface:#fff;--surface2:#f3f2ef;
+  --border:#e5e4e0;--border2:#ccc;
+  --text:#1a1a18;--text2:#5a5a55;--text3:#9a9a95;
+  --accent:#2563eb;--accent-bg:#eff6ff;--accent-t:#1d4ed8;
+  --success:#16a34a;--success-bg:#f0fdf4;--success-t:#15803d;
+  --warning:#d97706;--warning-bg:#fffbeb;--warning-t:#92400e;
+  --danger:#dc2626;--danger-bg:#fef2f2;--danger-t:#991b1b;
+  --purple:#7c3aed;--purple-bg:#f5f3ff;
+  --radius:8px;--radius2:12px;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);min-height:100vh;display:flex}
+/* SIDEBAR */
+.sidebar{width:220px;flex-shrink:0;background:var(--surface);border-right:0.5px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;overflow:hidden}
+.sidebar-brand{padding:1.25rem 1rem 1rem;border-bottom:0.5px solid var(--border)}
+.sidebar-brand .logo{font-size:15px;font-weight:600;color:var(--text)}
+.sidebar-brand .sub{font-size:11px;color:var(--text3);margin-top:2px}
+.nav{flex:1;padding:0.5rem 0;overflow-y:auto}
+.nav-section{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;padding:10px 16px 4px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 16px;cursor:pointer;color:var(--text2);font-size:13px;border:none;background:none;width:100%;text-align:left;border-radius:0;transition:all .1s}
+.nav-item:hover{background:var(--bg);color:var(--text)}
+.nav-item.active{background:var(--accent-bg);color:var(--accent);font-weight:500}
+.nav-item i{font-size:17px}
+.sidebar-footer{padding:1rem;border-top:0.5px solid var(--border);font-size:11px;color:var(--text3)}
+.sidebar-footer .role-badge{display:inline-flex;align-items:center;gap:4px;background:var(--accent-bg);color:var(--accent);border-radius:20px;padding:2px 8px;font-size:10px;font-weight:500;margin-top:4px}
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+.topbar{background:var(--surface);border-bottom:0.5px solid var(--border);padding:.75rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.topbar h2{font-size:15px;font-weight:600;display:flex;align-items:center;gap:8px}
+.topbar-right{display:flex;gap:8px;align-items:center}
+.content{flex:1;padding:1.5rem;overflow-y:auto}
+/* CARDS & STATS */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:1.25rem}
+.stat{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius2);padding:.85rem 1rem}
+.stat-label{font-size:11px;color:var(--text3);margin-bottom:4px;font-weight:500}
+.stat-val{font-size:22px;font-weight:600;color:var(--text);line-height:1}
+.stat-sub{font-size:11px;color:var(--text3);margin-top:3px}
+.card{background:var(--surface);border:0.5px solid var(--border);border-radius:var(--radius2);margin-bottom:1rem}
+.card-header{padding:.85rem 1.1rem;border-bottom:0.5px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-header h4{font-size:13px;font-weight:600;display:flex;align-items:center;gap:7px}
+.card-body{padding:1.1rem}
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:var(--radius);font-size:13px;font-weight:500;cursor:pointer;border:0.5px solid;transition:all .15s;font-family:inherit}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-primary:hover{background:var(--accent-t);border-color:var(--accent-t)}
+.btn-secondary{background:none;color:var(--text2);border-color:var(--border2)}
+.btn-secondary:hover{background:var(--bg);color:var(--text)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.btn-danger{background:none;color:var(--danger);border-color:var(--danger-bg)}
+.btn-danger:hover{background:var(--danger-bg)}
+/* CHIPS & BADGES */
+.badge{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500}
+.badge-blue{background:var(--accent-bg);color:var(--accent-t)}
+.badge-green{background:var(--success-bg);color:var(--success-t)}
+.badge-amber{background:var(--warning-bg);color:var(--warning-t)}
+.badge-red{background:var(--danger-bg);color:var(--danger-t)}
+.badge-purple{background:var(--purple-bg);color:var(--purple)}
+.badge-gray{background:var(--surface2);color:var(--text2)}
+/* CHIP FILTER */
+.chip-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:1rem}
+.chip{padding:5px 12px;border-radius:20px;border:0.5px solid var(--border);font-size:12px;cursor:pointer;color:var(--text2);background:none;font-family:inherit;transition:all .15s}
+.chip.on{background:var(--accent-bg);color:var(--accent-t);border-color:var(--accent)}
+/* TOOLBAR */
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:1rem}
+.week-nav{display:flex;align-items:center;gap:6px;margin-left:auto}
+.week-nav button{background:none;border:0.5px solid var(--border2);border-radius:var(--radius);padding:5px 8px;cursor:pointer;font-size:13px;color:var(--text2)}
+.week-nav span{font-size:13px;font-weight:500;min-width:130px;text-align:center}
+/* SCHEDULE GRID */
+.sched-wrap{overflow-x:auto;border-radius:var(--radius2);border:0.5px solid var(--border)}
+.sched-table{width:100%;border-collapse:collapse;table-layout:fixed;min-width:700px}
+.sched-table th{font-size:11px;font-weight:600;color:var(--text3);padding:7px 6px;background:var(--surface2);text-align:center;border:0.5px solid var(--border);white-space:nowrap}
+.sched-table .th-time{width:56px}
+.sched-table td{border:0.5px solid var(--border);vertical-align:top;padding:3px;height:42px;background:var(--surface)}
+.sched-table .td-time{font-size:11px;color:var(--text3);text-align:right;padding:4px 8px 4px 4px;background:var(--surface2);white-space:nowrap}
+.sblock{border-radius:4px;padding:3px 5px;font-size:11px;margin-bottom:2px;cursor:pointer;position:relative;line-height:1.3}
+.sblock .sb-brand{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sblock .sb-host{opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sblock-tiktok{background:#e8f4fd;color:#0c5f99;border-left:2.5px solid #2196f3}
+.sblock-shopee{background:#fff0eb;color:#c4420a;border-left:2.5px solid #f57345}
+.sblock-tokped{background:#f0fbf4;color:#1a6630;border-left:2.5px solid #2da44e}
+.sblock-multi{background:#f5f0ff;color:#5b21b6;border-left:2.5px solid #7c3aed}
+.warn-dot{position:absolute;top:2px;right:3px;width:6px;height:6px;border-radius:50%;background:var(--warning)}
+/* FORM */
+.form-group{margin-bottom:12px}
+.form-label{font-size:12px;font-weight:500;color:var(--text2);margin-bottom:4px;display:block}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:7px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);font-size:13px;background:var(--surface);color:var(--text);font-family:inherit;outline:none}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+/* WARN BOX */
+.warn-box{border-radius:var(--radius);padding:9px 12px;font-size:12px;margin-bottom:10px;display:flex;gap:8px;align-items:flex-start;line-height:1.5}
+.warn-error{background:var(--danger-bg);border:0.5px solid #fca5a5;color:var(--danger-t)}
+.warn-warn{background:var(--warning-bg);border:0.5px solid #fcd34d;color:var(--warning-t)}
+/* OVERLAY / MODAL */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:200;align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:var(--radius2);border:0.5px solid var(--border);padding:1.5rem;width:480px;max-width:96vw;max-height:92vh;overflow-y:auto}
+.modal-title{font-size:15px;font-weight:600;margin-bottom:1.25rem;display:flex;align-items:center;gap:8px}
+.modal-footer{display:flex;gap:8px;margin-top:1.25rem;padding-top:1rem;border-top:0.5px solid var(--border)}
+/* TABLE */
+.data-table{width:100%;border-collapse:collapse}
+.data-table th{font-size:11px;font-weight:600;color:var(--text3);text-align:left;padding:7px 10px;border-bottom:0.5px solid var(--border);background:var(--surface2)}
+.data-table td{padding:9px 10px;border-bottom:0.5px solid var(--border);font-size:13px;vertical-align:middle}
+.data-table tr:last-child td{border-bottom:none}
+.data-table tr:hover td{background:var(--bg)}
+.sum-row td{font-weight:600;border-top:1px solid var(--border2)!important;background:var(--surface2)!important}
+/* AVATAR */
+.avatar{width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0}
+.av-ft{background:var(--accent-bg);color:var(--accent-t)}
+.av-fl{background:var(--danger-bg);color:var(--danger-t)}
+/* PROGRESS */
+.prog{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;border-radius:3px;background:var(--accent);transition:width .3s}
+.prog-warn{background:var(--warning)}
+.prog-danger{background:var(--danger)}
+/* PAGE */
+.page{display:none}.page.active{display:block}
+/* TOAST */
+.toast{position:fixed;bottom:20px;right:20px;z-index:999;background:var(--text);color:#fff;padding:10px 16px;border-radius:var(--radius);font-size:13px;display:none;align-items:center;gap:8px;max-width:320px}
+.toast.show{display:flex}
+/* TAG MULTI */
+.host-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.host-tag{font-size:11px;background:var(--bg);border:0.5px solid var(--border2);border-radius:20px;padding:2px 8px;display:flex;align-items:center;gap:4px}
+.host-tag button{background:none;border:none;cursor:pointer;color:var(--text3);padding:0;font-size:11px;line-height:1}
+/* LOADING */
+.loading{text-align:center;padding:2rem;color:var(--text3);font-size:13px}
+.skeleton{background:linear-gradient(90deg,var(--surface2) 25%,var(--border) 50%,var(--surface2) 75%);background-size:200% 100%;animation:shimmer 1.2s infinite;border-radius:4px;height:16px;margin:4px 0}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+/* INVOICE PREVIEW */
+.invoice-preview{font-family:'Courier New',monospace;font-size:12px;border:1px solid var(--border);border-radius:var(--radius);padding:1.5rem;background:#fff;max-width:600px}
+.inv-header{display:flex;justify-content:space-between;margin-bottom:1rem;padding-bottom:1rem;border-bottom:1px solid var(--border)}
+.inv-table{width:100%;border-collapse:collapse;margin:1rem 0}
+.inv-table th,.inv-table td{padding:6px 8px;text-align:left;border-bottom:0.5px solid var(--border)}
+.inv-table th{background:var(--surface2);font-weight:600}
+.inv-total{text-align:right;margin-top:.5rem}
+/* Responsive */
+@media(max-width:900px){.sidebar{display:none}.content{padding:1rem}}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="sidebar-brand">
+    <div class="logo">THX Agency</div>
+    <div class="sub">Live Operation System</div>
+  </div>
+  <div class="nav">
+    <div class="nav-section">Operasional</div>
+    <button class="nav-item active" onclick="goPage('sched',this)"><i class="ti ti-calendar-week"></i>Scheduling</button>
+    <button class="nav-item" onclick="goPage('livedata',this)"><i class="ti ti-chart-line"></i>Live Data Report</button>
+    <div class="nav-section">Tim & Bayar</div>
+    <button class="nav-item" onclick="goPage('hosts',this)"><i class="ti ti-users"></i>Host Management</button>
+    <button class="nav-item" onclick="goPage('payment',this)"><i class="ti ti-cash"></i>Payment Calc</button>
+    <div class="nav-section">Finance</div>
+    <button class="nav-item" onclick="goPage('agency',this)"><i class="ti ti-calculator"></i>Agency Calculation</button>
+    <button class="nav-item" onclick="goPage('invoice',this)"><i class="ti ti-file-invoice"></i>Invoice</button>
+    <div class="nav-section">Konfigurasi</div>
+    <button class="nav-item" onclick="goPage('brands',this)"><i class="ti ti-building-store"></i>Brands & Akun</button>
+    <button class="nav-item" onclick="goPage('settings',this)"><i class="ti ti-settings"></i>Settings</button>
+  </div>
+  <div class="sidebar-footer">
+    <div id="sidebar-user">Memuat...</div>
+    <div class="role-badge" id="sidebar-role"><i class="ti ti-shield"></i> Owner</div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <div class="topbar">
+    <h2 id="topbar-title"><i class="ti ti-calendar-week"></i>Live Scheduling</h2>
+    <div class="topbar-right" id="topbar-actions">
+      <button class="btn btn-secondary btn-sm" onclick="refreshData()"><i class="ti ti-refresh"></i>Refresh</button>
+      <button class="btn btn-primary btn-sm" onclick="openModal('add-session')"><i class="ti ti-plus"></i>Tambah Sesi</button>
+    </div>
+  </div>
+  <div class="content">
+
+    <!-- PAGE: SCHEDULING -->
+    <div id="page-sched" class="page active">
+      <div class="stats" id="sched-stats">
+        <div class="stat"><div class="stat-label">Live minggu ini</div><div class="stat-val" id="ss-total">—</div><div class="stat-sub">sesi terjadwal</div></div>
+        <div class="stat"><div class="stat-label">Total jam</div><div class="stat-val" id="ss-hours">—</div><div class="stat-sub">jam live</div></div>
+        <div class="stat"><div class="stat-label">Peringatan</div><div class="stat-val" id="ss-warns" style="color:var(--warning)">—</div><div class="stat-sub">perlu cek</div></div>
+        <div class="stat"><div class="stat-label">Host aktif</div><div class="stat-val" id="ss-hosts">—</div><div class="stat-sub">minggu ini</div></div>
+      </div>
+      <div class="toolbar">
+        <div class="chip-row" id="brand-chips" style="margin:0">
+          <button class="chip on" onclick="filterBrand(this,'all')">Semua brand</button>
+        </div>
+        <div class="week-nav">
+          <button onclick="changeWeek(-1)"><i class="ti ti-chevron-left"></i></button>
+          <span id="week-label">—</span>
+          <button onclick="changeWeek(1)"><i class="ti ti-chevron-right"></i></button>
+        </div>
+      </div>
+      <div class="sched-wrap">
+        <table class="sched-table" id="sched-grid"><tbody><tr><td class="loading">Memuat jadwal...</td></tr></tbody></table>
+      </div>
+    </div>
+
+    <!-- PAGE: LIVE DATA -->
+    <div id="page-livedata" class="page">
+      <div class="stats">
+        <div class="stat"><div class="stat-label">GMV hari ini</div><div class="stat-val" id="ld-gmv-today">—</div><div class="stat-sub" id="ld-gmv-sub">—</div></div>
+        <div class="stat"><div class="stat-label">Jam live hari ini</div><div class="stat-val" id="ld-hrs">—</div><div class="stat-sub">jam</div></div>
+        <div class="stat"><div class="stat-label">Orders</div><div class="stat-val" id="ld-orders">—</div><div class="stat-sub">transaksi</div></div>
+        <div class="stat"><div class="stat-label">Avg GMV/jam</div><div class="stat-val" id="ld-gmvhr">—</div><div class="stat-sub">efisiensi</div></div>
+      </div>
+      <div class="toolbar">
+        <select id="ld-brand-filter" onchange="renderLiveData()" style="font-size:13px;padding:6px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface)">
+          <option value="">Semua brand</option>
+        </select>
+        <input type="month" id="ld-month" onchange="renderLiveData()" style="font-size:13px;padding:6px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface)">
+        <button class="btn btn-primary btn-sm" onclick="openModal('add-livedata')" style="margin-left:auto"><i class="ti ti-plus"></i>Input Data Live</button>
+      </div>
+      <div class="card">
+        <div class="card-header"><h4><i class="ti ti-table"></i>Data live harian</h4></div>
+        <div style="overflow-x:auto"><table class="data-table" id="livedata-table"><tbody><tr><td class="loading">Memuat...</td></tr></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- PAGE: HOSTS -->
+    <div id="page-hosts" class="page">
+      <div class="stats">
+        <div class="stat"><div class="stat-label">Total host</div><div class="stat-val" id="h-total">—</div></div>
+        <div class="stat"><div class="stat-label">Fulltime</div><div class="stat-val" id="h-ft">—</div></div>
+        <div class="stat"><div class="stat-label">Freelance</div><div class="stat-val" id="h-fl">—</div></div>
+        <div class="stat"><div class="stat-label">Aktif bulan ini</div><div class="stat-val" id="h-active">—</div></div>
+      </div>
+      <div class="chip-row" id="host-type-chips">
+        <button class="chip on" onclick="filterHostType(this,'all')">Semua</button>
+        <button class="chip" onclick="filterHostType(this,'fulltime')">Fulltime</button>
+        <button class="chip" onclick="filterHostType(this,'freelance')">Freelance</button>
+      </div>
+      <div class="card">
+        <div class="card-body" style="padding:0;overflow-x:auto">
+          <table class="data-table" id="host-table"><tbody><tr><td class="loading">Memuat...</td></tr></tbody></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: PAYMENT -->
+    <div id="page-payment" class="page">
+      <div class="stats">
+        <div class="stat"><div class="stat-label">Total jam freelance</div><div class="stat-val" id="p-jam">—</div></div>
+        <div class="stat"><div class="stat-label">Total bayar</div><div class="stat-val" id="p-total" style="font-size:14px">—</div></div>
+        <div class="stat"><div class="stat-label">Host dibayar</div><div class="stat-val" id="p-count">—</div></div>
+        <div class="stat"><div class="stat-label">Status</div><div class="stat-val" id="p-status" style="font-size:13px">—</div></div>
+      </div>
+      <div class="toolbar">
+        <select id="pay-period" onchange="renderPayment()" style="font-size:13px;padding:6px 10px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--surface)"><option>Juli 2026</option><option>Juni 2026</option><option>Mei 2026</option></select>
+        <button class="btn btn-secondary btn-sm"><i class="ti ti-download"></i>Export Excel</button>
+      </div>
+      <div class="card">
+        <div class="card-header"><h4><i class="ti ti-receipt"></i>Detail payment freelance</h4></div>
+        <div style="overflow-x:auto"><table class="data-table" id="payment-table"><tbody><tr><td class="loading">Memuat...</td></tr></tbody></table></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h4><i class="ti ti-building-store"></i>Total jam per brand bulan ini</h4></div>
+        <div style="overflow-x:auto"><table class="data-table" id="brand-hours-table"><tbody></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- PAGE: AGENCY CALC -->
+    <div id="page-agency" class="page">
+      <div class="stats">
+        <div class="stat"><div class="stat-label">Total GMV</div><div class="stat-val" id="ag-gmv" style="font-size:14px">—</div></div>
+        <div class="stat"><div class="stat-label">Total COGS</div><div class="stat-val" id="ag-cogs" style="font-size:14px">—</div></div>
+        <div class="stat"><div class="stat-label">Gross Profit</div><div class="stat-val" id="ag-gp" style="font-size:14px;color:var(--success)">—</div></div>
+        <div class="stat"><div class="stat-label">GP %</div><div class="stat-val" id="ag-gppct">—</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h4><i class="ti ti-table"></i>Kalkulasi per brand</h4>
+          <button class="btn btn-primary btn-sm" onclick="openModal('add-agency')"><i class="ti ti-plus"></i>Tambah</button>
+        </div>
+        <div style="overflow-x:auto"><table class="data-table" id="agency-table"><tbody><tr><td class="loading">Memuat...</td></tr></tbody></table></div>
+      </div>
+    </div>
+
+    <!-- PAGE: INVOICE -->
+    <div id="page-invoice" class="page">
+      <div class="toolbar">
+        <button class="btn btn-primary btn-sm" onclick="openModal('create-invoice')"><i class="ti ti-plus"></i>Buat Invoice</button>
+      </div>
+      <div class="card">
+        <div class="card-body" style="padding:0;overflow-x:auto">
+          <table class="data-table" id="invoice-table">
+            <thead><tr><th>No Invoice</th><th>Brand</th><th>Tanggal</th><th>Total</th><th>Status</th><th>Aksi</th></tr></thead>
+            <tbody><tr><td colspan="6" class="loading" style="padding:2rem;text-align:center">Memuat...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE: BRANDS -->
+    <div id="page-brands" class="page">
+      <div id="brand-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px"></div>
+    </div>
+
+    <!-- PAGE: SETTINGS -->
+    <div id="page-settings" class="page">
+      <div class="card">
+        <div class="card-header"><h4><i class="ti ti-database"></i>Koneksi Supabase</h4></div>
+        <div class="card-body">
+          <div class="form-group"><div class="form-label">Project URL</div><input type="text" id="set-url" placeholder="https://xxx.supabase.co"></div>
+          <div class="form-group"><div class="form-label">Anon Key</div><input type="text" id="set-key" placeholder="sb_publishable_..."></div>
+          <button class="btn btn-primary" onclick="saveSettings()"><i class="ti ti-check"></i>Simpan & Konek</button>
+          <div id="conn-status" style="margin-top:10px;font-size:12px;color:var(--text3)"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- ===== MODALS ===== -->
+
+<!-- ADD SESSION -->
+<div class="overlay" id="modal-add-session">
+<div class="modal">
+  <div class="modal-title"><i class="ti ti-calendar-plus"></i>Tambah sesi live</div>
+  <div id="session-warnings"></div>
+  <div class="form-group">
+    <div class="form-label">Brand</div>
+    <select id="f-brand" onchange="onBrandChange()"><option value="">Pilih brand...</option></select>
+  </div>
+  <div class="form-group">
+    <div class="form-label">Akun / Platform</div>
+    <select id="f-account"><option value="">Pilih akun...</option></select>
+  </div>
+  <div class="form-group">
+    <div class="form-label">Host (bisa pilih lebih dari 1)</div>
+    <select id="f-host-select" onchange="addHostTag()"><option value="">+ Tambah host...</option></select>
+    <div class="host-tags" id="f-host-tags"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><div class="form-label">Tanggal</div><input type="date" id="f-date" onchange="checkConflict()"></div>
+    <div class="form-group"><div class="form-label">Jam mulai</div><input type="time" id="f-start" onchange="checkConflict()"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><div class="form-label">Durasi (jam)</div><input type="number" id="f-dur" min="0.5" max="24" step="0.5" value="6" onchange="checkConflict()"></div>
+    <div class="form-group"><div class="form-label">Target GMV (opsional)</div><input type="text" id="f-gmv" placeholder="Contoh: 5000000"></div>
+  </div>
+  <div class="form-group"><div class="form-label">Catatan</div><input type="text" id="f-note" placeholder="Brief, produk focus, dll."></div>
+  <div class="modal-footer">
+    <button class="btn btn-secondary" style="flex:1" onclick="closeModal('add-session')">Batal</button>
+    <button class="btn btn-primary" style="flex:2" onclick="saveSession()"><i class="ti ti-check"></i>Simpan jadwal</button>
+  </div>
+</div>
+</div>
+
+<!-- ADD LIVE DATA -->
+<div class="overlay" id="modal-add-livedata">
+<div class="modal">
+  <div class="modal-title"><i class="ti ti-chart-line"></i>Input data live</div>
+  <div class="form-row">
+    <div class="form-group"><div class="form-label">Brand</div><select id="ld-f-brand"><option value="">Pilih...</option></select></div>
+    <div class="form-group"><div class="form-label">Platform</div>
+      <select id="ld-f-platform"><option>TikTok</option><option>Shopee</option><option>Tokopedia</option></select>
+    </div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><div class="form-label">Tanggal</div><input type="date" id="ld-f-date"></div>
+    <div class="form-group"><div class="form-label">Jam mulai</div><input type="time" id="ld-f-start" value="08:00"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><div class="form-label">Durasi (jam)</div><input type="number" id="ld-f-dur" value="6" step="0.5"></div>
+    <div class="form-group"><div class="form-label">Shift</div>
+      <select id="ld-f-shift"><option>pagi</option><option>siang</option><option>sore</option><option>malam</option></select>
+    </div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><div class="form-label">GMV (Rp)</div><input type="number" id="ld-f-gmv" placeholder="0"></div>
+    <div class="form-group"><div class="form-label">Ads Spend (Rp)</div><input type="number" id="ld-f-ads" placeholder="0"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><div class="form-label">Total Views</div><input type="number" id="ld-f-views" placeholder="0"></div>
+    <div class="form-group"><div class="form-label">Total Viewers</div><input type="number" id="ld-f-viewers" placeholder="0"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><div class="form-label">Orders</div><input type="number" id="ld-f-orders" placeholder="0"></div>
+    <div class="form-group"><div class="form-label">Items Sold</div><input type="number" id="ld-f-items" placeholder="0"></div>
+  </div>
+  <div class="form-row">
+    <div class="form-group"><div class="form-label">Product Impressions</div><input type="number" id="ld-f-impressions" placeholder="0"></div>
+    <div class="form-group"><div class="form-label">Product Clicks</div><input type="number" id="ld-f-clicks" placeholder="0"></div>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-secondary" style="flex:1" onclick="closeModal('add-livedata')">Batal</button>
+    <button class="btn btn-primary" style="flex:2" onclick="saveLiveData()"><i class="ti ti-check"></i>Simpan data</button>
+  </div>
+</div>
+</div>
+
+<!-- CREATE INVOICE -->
+<div class="overlay" id="modal-create-invoice">
+<div class="modal">
+  <div class="modal-title"><i class="ti ti-file-invoice"></i>Buat invoice</div>
+  <div class="form-row">
+    <div class="form-group"><div class="form-label">No Invoice</div><input type="text" id="inv-f-num" placeholder="INV260701"></div>
+    <div class="form-group"><div class="form-label">Tanggal</div><input type="date" id="inv-f-date"></div>
+  </div>
+  <div class="form-group"><div class="form-label">Brand</div><select id="inv-f-brand"><option value="">Pilih brand...</option></select></div>
+  <div class="form-group"><div class="form-label">Tagih ke (Nama perusahaan)</div><input type="text" id="inv-f-billto" placeholder="PT Stargo Digital Indonesia"></div>
+  <div class="form-group"><div class="form-label">Email</div><input type="text" id="inv-f-email" placeholder="financeall@bintango.id"></div>
+  <div id="inv-line-items">
+    <div class="form-label" style="margin-bottom:6px">Line items</div>
+    <div id="inv-lines"></div>
+    <button class="btn btn-secondary btn-sm" onclick="addInvLine()" style="margin-top:6px"><i class="ti ti-plus"></i>Tambah baris</button>
+  </div>
+  <div class="modal-footer">
+    <button class="btn btn-secondary" style="flex:1" onclick="closeModal('create-invoice')">Batal</button>
+    <button class="btn btn-primary" style="flex:2" onclick="saveInvoice()"><i class="ti ti-check"></i>Simpan draft</button>
+  </div>
+</div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// CONFIG SUPABASE
+// ============================================================
+const SUPABASE_URL = 'https://rbxozrqtblxcbivwfwbm.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_VF9t-WDjqLX59u-Z45cGzA_NyFn7gt3';
+let sb = null;
+try { sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY); } catch(e){}
+
+// ============================================================
+// STATE
+// ============================================================
+let brands = [], accounts = [], hosts = [], sessions = [], liveData = [];
+let weekOffset = 0;
+let filterBrandId = 'all';
+let filterHostTypeVal = 'all';
+let selectedHosts = []; // [{id, name, type}]
+
+// ============================================================
+// INIT
+// ============================================================
+async function init() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('f-date').value = today;
+  document.getElementById('ld-f-date').value = today;
+  document.getElementById('inv-f-date').value = today;
+  document.getElementById('ld-month').value = today.slice(0,7);
+  document.getElementById('set-url').value = SUPABASE_URL;
+  document.getElementById('set-key').value = SUPABASE_KEY;
+
+  await Promise.all([loadBrands(), loadHosts()]);
+  await loadSessions();
+  renderSchedule();
+}
+
+// ============================================================
+// DATA LOADERS
+// ============================================================
+async function loadBrands() {
+  try {
+    const { data, error } = await sb.from('brands').select('*').eq('is_active', true).order('name');
+    if (error) throw error;
+    brands = data || [];
+    const { data: acc } = await sb.from('accounts').select('*').eq('is_active', true);
+    accounts = acc || [];
+    populateBrandChips();
+    populateBrandDropdowns();
+  } catch(e) {
+    console.warn('loadBrands:', e.message);
+    // Use demo data if Supabase not connected
+    brands = [
+      {id:'1', name:'Natur-E', platforms:['TikTok','Shopee'], target_hours_monthly:400},
+      {id:'2', name:'Natur-E Colla', platforms:['TikTok'], target_hours_monthly:183},
+      {id:'3', name:'Veluna', platforms:['TikTok','Shopee'], target_hours_monthly:180},
+      {id:'4', name:'Cerebrofort', platforms:['Tokopedia'], target_hours_monthly:100},
+    ];
+    accounts = [
+      {id:'a1', brand_id:'1', name:'Room 5 - TikTok', platform:'TikTok'},
+      {id:'a2', brand_id:'1', name:'Room 8 - Shopee', platform:'Shopee'},
+      {id:'a3', brand_id:'2', name:'Room 8 - Colla', platform:'TikTok'},
+      {id:'a4', brand_id:'3', name:'wearveluna', platform:'TikTok'},
+      {id:'a5', brand_id:'3', name:'velunaootd', platform:'Shopee'},
+      {id:'a6', brand_id:'4', name:'Room 3 - Tokped', platform:'Tokopedia'},
+    ];
+    populateBrandChips();
+    populateBrandDropdowns();
+  }
+}
+
+async function loadHosts() {
+  try {
+    const { data, error } = await sb.from('hosts').select('*').eq('is_active', true).order('name');
+    if (error) throw error;
+    hosts = data || [];
+  } catch(e) {
+    hosts = [
+      {id:'h1', name:'Dila',  type:'fulltime', rate_per_hour:0},
+      {id:'h2', name:'Rana',  type:'fulltime', rate_per_hour:0},
+      {id:'h3', name:'Lulu',  type:'fulltime', rate_per_hour:0},
+      {id:'h4', name:'Dinda', type:'fulltime', rate_per_hour:0},
+      {id:'h5', name:'Nadia', type:'fulltime', rate_per_hour:0},
+      {id:'h6', name:'Tira',  type:'freelance', rate_per_hour:75000},
+      {id:'h7', name:'Febri', type:'freelance', rate_per_hour:75000},
+      {id:'h8', name:'Tasya', type:'freelance', rate_per_hour:75000},
+      {id:'h9', name:'Raisa', type:'freelance', rate_per_hour:75000},
+      {id:'h10', name:'Adelia',type:'freelance', rate_per_hour:50000},
+      {id:'h11', name:'Fadia', type:'freelance', rate_per_hour:50000},
+      {id:'h12', name:'Nisa',  type:'freelance', rate_per_hour:50000},
+    ];
+  }
+  populateHostDropdowns();
+  renderHosts();
+}
+
+async function loadSessions() {
+  const dates = getWeekDates(weekOffset);
+  const start = fmt(dates[0]);
+  const end = fmt(dates[6]);
+  try {
+    const { data, error } = await sb.from('sessions')
+      .select('*, session_hosts(*, hosts(name, type))')
+      .gte('session_date', start).lte('session_date', end);
+    if (error) throw error;
+    sessions = data || [];
+  } catch(e) {
+    sessions = getDemoSessions(dates);
+  }
+  renderSchedule();
+}
+
+async function loadLiveData() {
+  const month = document.getElementById('ld-month').value;
+  const brandId = document.getElementById('ld-brand-filter').value;
+  try {
+    let q = sb.from('live_data').select('*, brands(name)').gte('report_date', month+'-01').lte('report_date', month+'-31').order('report_date', {ascending:false});
+    if(brandId) q = q.eq('brand_id', brandId);
+    const { data } = await q;
+    liveData = data || [];
+  } catch(e) { liveData = []; }
+  renderLiveData();
+}
+
+// ============================================================
+// SCHEDULE RENDER
+// ============================================================
+function getWeekDates(offset) {
+  const now = new Date();
+  const day = now.getDay();
+  const mon = new Date(now);
+  mon.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + offset * 7);
+  return Array.from({length:7}, (_,i) => { const d=new Date(mon); d.setDate(mon.getDate()+i); return d; });
+}
+function fmt(d) { return d.toISOString().split('T')[0]; }
+function fmtDisplay(d) {
+  const days = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+  return days[d.getDay()] + ' ' + d.getDate() + '/' + (d.getMonth()+1);
+}
+function fmtRupiah(n) {
+  if (!n) return '—';
+  if (n >= 1000000000) return 'Rp'+(n/1000000000).toFixed(1)+'M';
+  if (n >= 1000000) return 'Rp'+(n/1000000).toFixed(1)+'jt';
+  if (n >= 1000) return 'Rp'+(n/1000).toFixed(0)+'rb';
+  return 'Rp'+n;
+}
+
+function renderSchedule() {
+  const dates = getWeekDates(weekOffset);
+  document.getElementById('week-label').textContent =
+    dates[0].getDate()+'/'+(dates[0].getMonth()+1)+' – '+dates[6].getDate()+'/'+(dates[6].getMonth()+1);
+  const strs = dates.map(fmt);
+  const filtered = sessions.filter(s => strs.includes(s.session_date) &&
+    (filterBrandId==='all' || s.brand_id===filterBrandId));
+
+  // Stats
+  document.getElementById('ss-total').textContent = filtered.length;
+  document.getElementById('ss-hours').textContent = filtered.reduce((a,s)=>a+(s.duration_hours||0),0)+'j';
+  document.getElementById('ss-warns').textContent = filtered.filter(s=>s.has_conflict||s.has_jumping).length;
+  const hostSet = new Set(filtered.flatMap(s=>s.host_ids||[]));
+  document.getElementById('ss-hosts').textContent = hostSet.size;
+
+  // Grid
+  const hours = Array.from({length:19},(_,i)=>i+6);
+  let html = '<thead><tr><th class="th-time">Jam</th>';
+  dates.forEach(d => { html += `<th>${fmtDisplay(d)}</th>`; });
+  html += '</tr></thead><tbody>';
+  hours.forEach(h => {
+    const hStr = String(h).padStart(2,'0')+':00';
+    html += `<tr><td class="td-time">${hStr}</td>`;
+    dates.forEach(d => {
+      const ds = fmt(d);
+      const cells = filtered.filter(s => {
+        if (s.session_date !== ds) return false;
+        const sh = parseInt((s.start_time||'00:00').split(':')[0]);
+        const sm = parseInt((s.start_time||'00:00').split(':')[1]||0)/60;
+        const start = sh + sm;
+        return start <= h && start + (s.duration_hours||0) > h;
+      });
+      let cellHtml = '';
+      cells.forEach(s => {
+        const plat = s.platform||'';
+        const cls = plat==='TikTok'?'sblock-tiktok':plat==='Shopee'?'sblock-shopee':plat==='Tokopedia'?'sblock-tokped':'sblock-multi';
+        const brand = brands.find(b=>b.id===s.brand_id);
+        const hostNames = getHostNames(s);
+        const warnHtml = (s.has_conflict||s.has_jumping) ? '<div class="warn-dot"></div>' : '';
+        cellHtml += `<div class="sblock ${cls}" onclick="editSession('${s.id}')" title="${brand?.name||''} | ${hostNames} | ${s.start_time} (${s.duration_hours}j)">
+          ${warnHtml}
+          <div class="sb-brand">${brand?.name||'—'}</div>
+          <div class="sb-host">${hostNames}</div>
+        </div>`;
+      });
+      html += `<td>${cellHtml}</td>`;
+    });
+    html += '</tr>';
+  });
+  html += '</tbody>';
+  document.getElementById('sched-grid').innerHTML = html;
+}
+
+function getHostNames(session) {
+  if (session.session_hosts?.length) {
+    return session.session_hosts.map(sh=>sh.hosts?.name||'?').join(', ');
+  }
+  const ids = session.host_ids || [];
+  return ids.map(id => hosts.find(h=>h.id===id)?.name||'?').join(', ') || '—';
+}
+
+function changeWeek(d) { weekOffset += d; loadSessions(); }
+function filterBrand(el, id) {
+  document.querySelectorAll('#brand-chips .chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  filterBrandId = id;
+  renderSchedule();
+}
+
+function populateBrandChips() {
+  const container = document.getElementById('brand-chips');
+  let html = '<button class="chip on" onclick="filterBrand(this,\'all\')">Semua brand</button>';
+  brands.forEach(b => { html += `<button class="chip" onclick="filterBrand(this,'${b.id}')">${b.name}</button>`; });
+  container.innerHTML = html;
+}
+
+// ============================================================
+// CONFLICT & JUMPING CHECK
+// ============================================================
+function checkConflict() {
+  const date = document.getElementById('f-date').value;
+  const start = document.getElementById('f-start').value;
+  const dur = parseFloat(document.getElementById('f-dur').value)||0;
+  const container = document.getElementById('session-warnings');
+  container.innerHTML = '';
+  if (!date || !start || !dur || selectedHosts.length === 0) return;
+
+  const sh = parseInt(start.split(':')[0]) + parseInt(start.split(':')[1])/60;
+  const se = sh + dur;
+  let warnings = [];
+
+  selectedHosts.forEach(host => {
+    // Conflict check
+    const conflicts = sessions.filter(s => {
+      if (s.session_date !== date) return false;
+      const hostIds = s.host_ids || s.session_hosts?.map(sh=>sh.host_id) || [];
+      if (!hostIds.includes(host.id)) return false;
+      const xh = parseInt((s.start_time||'00:00').split(':')[0]);
+      const xe = xh + (s.duration_hours||0);
+      return sh < xe && se > xh;
+    });
+    if (conflicts.length) {
+      warnings.push({type:'error', msg:`<b>Konflik!</b> ${host.name} sudah ada sesi lain pada jam yang sama. Tetap bisa disimpan.`});
+    }
+    // Jumping check
+    const prevDate = new Date(date);
+    prevDate.setDate(prevDate.getDate()-1);
+    const prevStr = fmt(prevDate);
+    const prevSessions = sessions.filter(s => {
+      if (s.session_date !== prevStr) return false;
+      const hostIds = s.host_ids || s.session_hosts?.map(sh=>sh.host_id) || [];
+      return hostIds.includes(host.id);
+    });
+    if (prevSessions.length) {
+      const lastEnd = Math.max(...prevSessions.map(s => parseInt((s.start_time||'00:00').split(':')[0])+(s.duration_hours||0)));
+      const gap = (sh + 24) - lastEnd;
+      if (gap < 8) {
+        warnings.push({type:'warn', msg:`<b>Potensi jumping!</b> ${host.name} selesai kemarin jam ${String(Math.floor(lastEnd%24)).padStart(2,'0')}:00. Gap hanya ${Math.round(gap)} jam (ideal 8-12 jam). Tetap bisa disimpan.`});
+      }
+    }
+  });
+
+  warnings.forEach(w => {
+    container.innerHTML += `<div class="warn-box ${w.type==='error'?'warn-error':'warn-warn'}"><i class="ti ti-alert-triangle"></i><div>${w.msg}</div></div>`;
+  });
+}
+
+// ============================================================
+// SAVE SESSION
+// ============================================================
+async function saveSession() {
+  const brandId = document.getElementById('f-brand').value;
+  const accountId = document.getElementById('f-account').value;
+  const date = document.getElementById('f-date').value;
+  const start = document.getElementById('f-start').value;
+  const dur = parseFloat(document.getElementById('f-dur').value)||0;
+  const gmv = document.getElementById('f-gmv').value;
+  const note = document.getElementById('f-note').value;
+
+  if (!brandId || !date || !start || !dur || selectedHosts.length===0) {
+    showToast('Lengkapi brand, tanggal, jam, durasi, dan minimal 1 host.', 'error');
+    return;
+  }
+
+  const hasConflict = document.querySelector('.warn-error') !== null;
+  const hasJumping = document.querySelector('.warn-warn') !== null;
+  const brand = brands.find(b=>b.id===brandId);
+  const account = accounts.find(a=>a.id===accountId);
+
+  const sessionData = {
+    brand_id: brandId,
+    account_id: accountId || null,
+    platform: account?.platform || brand?.platforms?.[0] || 'TikTok',
+    session_date: date,
+    start_time: start,
+    duration_hours: dur,
+    host_ids: selectedHosts.map(h=>h.id),
+    target_gmv: gmv ? parseFloat(gmv) : null,
+    notes: note,
+    has_conflict: hasConflict,
+    has_jumping: hasJumping,
+    conflict_notes: hasConflict ? 'Konflik terdeteksi saat input' : (hasJumping ? 'Potensi jumping terdeteksi' : null),
+    status: 'scheduled',
+    created_by: 'owner'
+  };
+
+  try {
+    const { data, error } = await sb.from('sessions').insert([sessionData]).select();
+    if (error) throw error;
+    sessions.push(data[0]);
+    // Insert session_hosts
+    const shRows = selectedHosts.map(h => ({
+      session_id: data[0].id,
+      host_id: h.id,
+      work_type: h.type,
+      rate_per_hour: h.type==='freelance' ? h.rate_per_hour : null,
+      rate_type: 'hourly'
+    }));
+    await sb.from('session_hosts').insert(shRows);
+    showToast('Sesi berhasil disimpan!');
+  } catch(e) {
+    // Demo mode fallback
+    const newSession = {...sessionData, id: 'demo-'+Date.now()};
+    sessions.push(newSession);
+    showToast('Sesi disimpan (demo mode)');
+  }
+
+  closeModal('add-session');
+  resetSessionForm();
+  renderSchedule();
+}
+
+function resetSessionForm() {
+  document.getElementById('f-brand').value = '';
+  document.getElementById('f-account').innerHTML = '<option value="">Pilih akun...</option>';
+  document.getElementById('f-dur').value = '6';
+  document.getElementById('f-gmv').value = '';
+  document.getElementById('f-note').value = '';
+  document.getElementById('f-start').value = '';
+  selectedHosts = [];
+  document.getElementById('f-host-tags').innerHTML = '';
+  document.getElementById('session-warnings').innerHTML = '';
+}
+
+// ============================================================
+// HOSTS UI
+// ============================================================
+function renderHosts() {
+  const list = hosts.filter(h => filterHostTypeVal==='all' || h.type===filterHostTypeVal);
+  // Count sessions per host this month
+  const thisMonth = new Date().toISOString().slice(0,7);
+  let html = '<thead><tr><th>Host</th><th>Tipe</th><th>Tarif/jam</th><th>Jam bulan ini</th><th>Aksi</th></tr></thead><tbody>';
+  list.forEach(h => {
+    const jam = sessions.filter(s => {
+      const isThisMonth = s.session_date?.startsWith(thisMonth);
+      const hids = s.host_ids || [];
+      return isThisMonth && hids.includes(h.id);
+    }).reduce((a,s)=>a+(s.duration_hours||0),0);
+    const pct = Math.min(100, Math.round(jam/160*100));
+    const pc = pct > 80 ? 'prog-warn' : '';
+    html += `<tr>
+      <td><div style="display:flex;align-items:center;gap:8px"><span class="avatar ${h.type==='fulltime'?'av-ft':'av-fl'}">${h.name.slice(0,2).toUpperCase()}</span>${h.name}</div></td>
+      <td><span class="badge ${h.type==='fulltime'?'badge-blue':'badge-red'}">${h.type==='fulltime'?'Fulltime':'Freelance'}</span></td>
+      <td>${h.type==='fulltime'?'Fix salary':'Rp '+Number(h.rate_per_hour).toLocaleString('id')}</td>
+      <td><div style="display:flex;align-items:center;gap:8px"><div class="prog" style="width:80px"><div class="prog-fill ${pc}" style="width:${pct}%"></div></div><span style="font-size:12px;color:var(--text3)">${jam}j</span></div></td>
+      <td><button class="btn btn-secondary btn-sm" onclick="editHost('${h.id}')"><i class="ti ti-edit"></i></button></td>
+    </tr>`;
+  });
+  if (!list.length) html += '<tr><td colspan="5" style="text-align:center;padding:2rem;color:var(--text3)">Tidak ada host</td></tr>';
+  html += '</tbody>';
+  document.getElementById('host-table').innerHTML = html;
+
+  // Stats
+  document.getElementById('h-total').textContent = hosts.length;
+  document.getElementById('h-ft').textContent = hosts.filter(h=>h.type==='fulltime').length;
+  document.getElementById('h-fl').textContent = hosts.filter(h=>h.type==='freelance').length;
+  document.getElementById('h-active').textContent = list.length;
+}
+
+function filterHostType(el, t) {
+  document.querySelectorAll('#host-type-chips .chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  filterHostTypeVal = t;
+  renderHosts();
+}
+
+// ============================================================
+// PAYMENT CALCULATION
+// ============================================================
+function renderPayment() {
+  const periodLabel = document.getElementById('pay-period').value;
+  // Get all freelance sessions
+  const freelanceSessions = sessions.filter(s => {
+    const hids = s.host_ids || [];
+    const hasFreelance = hids.some(id => {
+      const h = hosts.find(x=>x.id===id);
+      return h?.type==='freelance';
+    });
+    return hasFreelance;
+  });
+
+  const byHost = {};
+  freelanceSessions.forEach(s => {
+    const hids = s.host_ids || [];
+    hids.forEach(hid => {
+      const h = hosts.find(x=>x.id===hid);
+      if (!h || h.type!=='freelance') return;
+      if (!byHost[hid]) byHost[hid] = {name:h.name, jam:0, rate:h.rate_per_hour||0, sessions:0};
+      byHost[hid].jam += s.duration_hours || 0;
+      byHost[hid].sessions++;
+    });
+  });
+
+  const entries = Object.entries(byHost);
+  let totalJam = 0, totalPay = 0;
+  let html = '<thead><tr><th>Host</th><th>Sesi</th><th>Jam live</th><th>Tarif/jam</th><th>Total bayar</th><th>Status</th></tr></thead><tbody>';
+  entries.forEach(([id,d]) => {
+    const pay = d.jam * d.rate;
+    totalJam += d.jam; totalPay += pay;
+    html += `<tr><td><div style="display:flex;align-items:center;gap:8px"><span class="avatar av-fl">${d.name.slice(0,2).toUpperCase()}</span>${d.name}</div></td>
+      <td style="color:var(--text3)">${d.sessions}</td>
+      <td><b>${d.jam}j</b></td>
+      <td>Rp ${Number(d.rate).toLocaleString('id')}</td>
+      <td style="font-weight:600">Rp ${Number(pay).toLocaleString('id')}</td>
+      <td><span class="badge badge-amber">Pending</span></td>
+    </tr>`;
+  });
+  if (!entries.length) html += '<tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text3)">Belum ada data freelance</td></tr>';
+  html += `<tr class="sum-row"><td colspan="2"><b>Total</b></td><td><b>${totalJam}j</b></td><td>—</td><td><b>Rp ${Number(totalPay).toLocaleString('id')}</b></td><td></td></tr></tbody>`;
+  document.getElementById('payment-table').innerHTML = html;
+  document.getElementById('p-jam').textContent = totalJam+'j';
+  document.getElementById('p-total').textContent = 'Rp '+Number(totalPay).toLocaleString('id');
+  document.getElementById('p-count').textContent = entries.length+' host';
+  document.getElementById('p-status').innerHTML = '<span class="badge badge-amber">Belum dibayar</span>';
+
+  // Brand hours
+  const byBrand = {};
+  sessions.forEach(s => {
+    if (!byBrand[s.brand_id]) byBrand[s.brand_id] = 0;
+    byBrand[s.brand_id] += s.duration_hours || 0;
+  });
+  let bhtml = '<thead><tr><th>Brand</th><th>Jam live</th><th>Target bulanan</th><th>Progress</th></tr></thead><tbody>';
+  brands.forEach(b => {
+    const jam = byBrand[b.id]||0;
+    const pct = Math.min(100, Math.round(jam/(b.target_hours_monthly||1)*100));
+    const pc = pct<50?'prog-danger':pct<80?'prog-warn':'';
+    bhtml += `<tr><td><b>${b.name}</b></td><td>${jam}j</td><td>${b.target_hours_monthly}j</td>
+      <td><div style="display:flex;align-items:center;gap:8px"><div class="prog" style="width:100px"><div class="prog-fill ${pc}" style="width:${pct}%"></div></div><span style="font-size:12px;color:var(--text3)">${pct}%</span></div></td>
+    </tr>`;
+  });
+  bhtml += '</tbody>';
+  document.getElementById('brand-hours-table').innerHTML = bhtml;
+}
+
+// ============================================================
+// LIVE DATA RENDER
+// ============================================================
+function renderLiveData() {
+  loadLiveData();
+}
+
+function renderLiveDataTable() {
+  const today = new Date().toISOString().split('T')[0];
+  const todayData = liveData.filter(d=>d.report_date===today);
+  document.getElementById('ld-gmv-today').textContent = fmtRupiah(todayData.reduce((a,d)=>a+(d.gmv||0),0));
+  document.getElementById('ld-hrs').textContent = todayData.reduce((a,d)=>a+(d.duration_hours||0),0)+'j';
+  document.getElementById('ld-orders').textContent = todayData.reduce((a,d)=>a+(d.orders||0),0);
+  const totalGmv = liveData.reduce((a,d)=>a+(d.gmv||0),0);
+  const totalHrs = liveData.reduce((a,d)=>a+(d.duration_hours||0),0);
+  document.getElementById('ld-gmvhr').textContent = fmtRupiah(totalHrs ? Math.round(totalGmv/totalHrs) : 0);
+
+  let html = '<thead><tr><th>Tanggal</th><th>Brand</th><th>Platform</th><th>Durasi</th><th>GMV</th><th>Orders</th><th>CVR</th><th>ROAS</th><th>GMV/jam</th></tr></thead><tbody>';
+  if (!liveData.length) { html += '<tr><td colspan="9" style="text-align:center;padding:2rem;color:var(--text3)">Belum ada data. Input data live dulu.</td></tr>'; }
+  liveData.forEach(d => {
+    const b = brands.find(x=>x.id===d.brand_id);
+    const cvr = d.cvr_viewers ? (d.cvr_viewers*100).toFixed(1)+'%' : '—';
+    const roas = d.roas ? d.roas.toFixed(2) : '—';
+    html += `<tr>
+      <td>${d.report_date}</td>
+      <td>${b?.name||d.brand_id||'—'}</td>
+      <td><span class="badge ${d.platform==='TikTok'?'badge-blue':d.platform==='Shopee'?'badge-red':'badge-green'}">${d.platform||'—'}</span></td>
+      <td>${d.duration_hours||0}j</td>
+      <td><b>${fmtRupiah(d.gmv)}</b></td>
+      <td>${d.orders||0}</td>
+      <td>${cvr}</td>
+      <td>${roas}</td>
+      <td>${fmtRupiah(d.gmv_per_hour)}</td>
+    </tr>`;
+  });
+  html += '</tbody>';
+  document.getElementById('livedata-table').innerHTML = html;
+}
+
+// ============================================================
+// SAVE LIVE DATA
+// ============================================================
+async function saveLiveData() {
+  const brandId = document.getElementById('ld-f-brand').value;
+  const platform = document.getElementById('ld-f-platform').value;
+  const date = document.getElementById('ld-f-date').value;
+  const start = document.getElementById('ld-f-start').value;
+  const dur = parseFloat(document.getElementById('ld-f-dur').value)||0;
+  const gmv = parseFloat(document.getElementById('ld-f-gmv').value)||0;
+  const ads = parseFloat(document.getElementById('ld-f-ads').value)||0;
+  const views = parseInt(document.getElementById('ld-f-views').value)||0;
+  const viewers = parseInt(document.getElementById('ld-f-viewers').value)||0;
+  const orders = parseInt(document.getElementById('ld-f-orders').value)||0;
+  const items = parseInt(document.getElementById('ld-f-items').value)||0;
+  const impressions = parseInt(document.getElementById('ld-f-impressions').value)||0;
+  const clicks = parseInt(document.getElementById('ld-f-clicks').value)||0;
+
+  const row = {
+    brand_id: brandId||null,
+    platform, report_date:date, start_time:start,
+    duration_hours:dur, session_shift:document.getElementById('ld-f-shift').value,
+    gmv, ads_spend:ads, total_views:views, total_viewers:viewers,
+    orders, items_sold:items, product_impressions:impressions, product_clicks:clicks,
+    ctr_product: impressions ? clicks/impressions : 0,
+    cvr_viewers: viewers ? orders/viewers : 0,
+    aov: orders ? gmv/orders : 0,
+    roas: ads ? gmv/ads : 0,
+    gmv_per_hour: dur ? gmv/dur : 0,
+  };
+
+  try {
+    const { error } = await sb.from('live_data').insert([row]);
+    if (error) throw error;
+    showToast('Data live berhasil disimpan!');
+  } catch(e) {
+    showToast('Data disimpan (demo mode)');
+  }
+  closeModal('add-livedata');
+  loadLiveData();
+}
+
+// ============================================================
+// AGENCY CALC
+// ============================================================
+function renderAgency() {
+  document.getElementById('ag-gmv').textContent = 'Rp 842jt';
+  document.getElementById('ag-cogs').textContent = 'Rp 149jt';
+  document.getElementById('ag-gp').textContent = 'Rp 693jt';
+  document.getElementById('ag-gppct').textContent = '27%';
+  document.getElementById('agency-table').innerHTML = `
+    <thead><tr><th>Brand</th><th>Periode</th><th>GMV</th><th>COGS Host</th><th>COGS Ops</th><th>GP</th><th>GP%</th></tr></thead>
+    <tbody>
+      <tr><td><b>Natur-E</b></td><td>Mei 2026</td><td>Rp 605jt</td><td>Rp 45jt</td><td>Rp 12jt</td><td style="color:var(--success)">Rp 548jt</td><td>90%</td></tr>
+      <tr><td><b>Natur-E Colla</b></td><td>Mei 2026</td><td>Rp 183jt</td><td>Rp 18jt</td><td>Rp 8jt</td><td style="color:var(--success)">Rp 157jt</td><td>86%</td></tr>
+    </tbody>`;
+}
+
+// ============================================================
+// INVOICE
+// ============================================================
+let invLineCount = 0;
+function addInvLine() {
+  invLineCount++;
+  const c = document.getElementById('inv-lines');
+  const div = document.createElement('div');
+  div.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:6px;margin-bottom:6px;align-items:center';
+  div.id = 'inv-line-'+invLineCount;
+  div.innerHTML = `
+    <input type="text" placeholder="Deskripsi (mis: Term 1 Natur-E TikTok | 1-31 Mei)" style="font-size:12px">
+    <input type="number" placeholder="Qty (jam)" style="font-size:12px" oninput="calcInvLine(${invLineCount})">
+    <input type="number" placeholder="Harga/unit" style="font-size:12px" oninput="calcInvLine(${invLineCount})">
+    <button onclick="document.getElementById('inv-line-${invLineCount}').remove()" style="background:none;border:none;cursor:pointer;color:var(--danger);font-size:16px"><i class="ti ti-x"></i></button>`;
+  c.appendChild(div);
+}
+function calcInvLine(n) {}
+
+async function saveInvoice() {
+  const num = document.getElementById('inv-f-num').value;
+  const date = document.getElementById('inv-f-date').value;
+  const brandId = document.getElementById('inv-f-brand').value;
+  const billTo = document.getElementById('inv-f-billto').value;
+  const email = document.getElementById('inv-f-email').value;
+  const lines = [];
+  document.querySelectorAll('#inv-lines > div').forEach(div => {
+    const inputs = div.querySelectorAll('input');
+    if(inputs[0]?.value) {
+      lines.push({desc:inputs[0].value, qty:parseFloat(inputs[1]?.value)||0, unit_price:parseFloat(inputs[2]?.value)||0});
+    }
+  });
+  const subtotal = lines.reduce((a,l)=>a+l.qty*l.unit_price,0);
+  const row = {
+    invoice_number: num, invoice_date: date, brand_id: brandId||null,
+    bill_to_name: billTo, bill_to_email: email,
+    line_items: lines, subtotal, total_amount: subtotal,
+    status:'draft'
+  };
+  try {
+    await sb.from('invoices').insert([row]);
+    showToast('Invoice draft disimpan!');
+  } catch(e) { showToast('Invoice disimpan (demo mode)'); }
+  closeModal('create-invoice');
+  renderInvoices();
+}
+
+function renderInvoices() {
+  document.getElementById('invoice-table').innerHTML = `
+    <thead><tr><th>No Invoice</th><th>Brand</th><th>Tanggal</th><th>Total</th><th>Status</th><th>Aksi</th></tr></thead>
+    <tbody>
+      <tr><td><b>INV260601</b></td><td>Natur-E</td><td>01/06/2026</td><td>Rp 80.820.511</td><td><span class="badge badge-green">Paid</span></td>
+        <td><button class="btn btn-secondary btn-sm"><i class="ti ti-eye"></i></button></td></tr>
+    </tbody>`;
+}
+
+// ============================================================
+// BRANDS PAGE
+// ============================================================
+function renderBrands() {
+  let html = '';
+  brands.forEach(b => {
+    const jam = sessions.filter(s=>s.brand_id===b.id).reduce((a,s)=>a+(s.duration_hours||0),0);
+    const pct = Math.min(100, Math.round(jam/(b.target_hours_monthly||1)*100));
+    const pc = pct < 50 ? 'prog-danger' : pct < 80 ? 'prog-warn' : '';
+    const plats = (b.platforms||[]).join(' · ');
+    html += `<div class="card" style="cursor:pointer">
+      <div class="card-body">
+        <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+          <div><div style="font-size:15px;font-weight:600">${b.name}</div><div style="font-size:12px;color:var(--text3)">${plats}</div></div>
+          <span class="badge badge-blue">${accounts.filter(a=>a.brand_id===b.id).length} akun</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <div class="prog" style="flex:1;height:8px"><div class="prog-fill ${pc}" style="width:${pct}%"></div></div>
+          <span style="font-size:12px;color:var(--text3)">${pct}%</span>
+        </div>
+        <div style="font-size:12px;color:var(--text3)">${jam}j / ${b.target_hours_monthly}j target/bulan</div>
+      </div>
+    </div>`;
+  });
+  document.getElementById('brand-cards').innerHTML = html || '<div class="loading">Belum ada brand terdaftar.</div>';
+}
+
+// ============================================================
+// POPULATE DROPDOWNS
+// ============================================================
+function populateBrandDropdowns() {
+  ['f-brand','inv-f-brand','ld-f-brand'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const cur = el.value;
+    el.innerHTML = '<option value="">Pilih brand...</option>';
+    brands.forEach(b => { el.innerHTML += `<option value="${b.id}">${b.name}</option>`; });
+    if (cur) el.value = cur;
+  });
+  // Brand filter for live data
+  const bf = document.getElementById('ld-brand-filter');
+  if (bf) {
+    bf.innerHTML = '<option value="">Semua brand</option>';
+    brands.forEach(b => { bf.innerHTML += `<option value="${b.id}">${b.name}</option>`; });
+  }
+}
+
+function populateHostDropdowns() {
+  const el = document.getElementById('f-host-select');
+  if (!el) return;
+  el.innerHTML = '<option value="">+ Tambah host...</option>';
+  hosts.forEach(h => {
+    el.innerHTML += `<option value="${h.id}">${h.name} (${h.type==='fulltime'?'FT':'FL'}${h.type==='freelance'?' · Rp'+Number(h.rate_per_hour).toLocaleString('id'):'' })</option>`;
+  });
+}
+
+function onBrandChange() {
+  const brandId = document.getElementById('f-brand').value;
+  const el = document.getElementById('f-account');
+  el.innerHTML = '<option value="">Pilih akun...</option>';
+  accounts.filter(a=>a.brand_id===brandId).forEach(a => {
+    el.innerHTML += `<option value="${a.id}">${a.name} (${a.platform})</option>`;
+  });
+}
+
+function addHostTag() {
+  const sel = document.getElementById('f-host-select');
+  const hid = sel.value;
+  if (!hid) return;
+  if (selectedHosts.find(h=>h.id===hid)) { sel.value=''; return; }
+  const host = hosts.find(h=>h.id===hid);
+  if (!host) return;
+  selectedHosts.push(host);
+  sel.value='';
+  renderHostTags();
+  checkConflict();
+}
+
+function removeHostTag(hid) {
+  selectedHosts = selectedHosts.filter(h=>h.id!==hid);
+  renderHostTags();
+  checkConflict();
+}
+
+function renderHostTags() {
+  const c = document.getElementById('f-host-tags');
+  c.innerHTML = selectedHosts.map(h => `
+    <div class="host-tag">
+      <span class="badge ${h.type==='fulltime'?'badge-blue':'badge-red'}" style="font-size:10px">${h.type==='fulltime'?'FT':'FL'}</span>
+      ${h.name}
+      <button onclick="removeHostTag('${h.id}')"><i class="ti ti-x"></i></button>
+    </div>`).join('');
+}
+
+// ============================================================
+// MODALS
+// ============================================================
+function openModal(id) {
+  document.getElementById('modal-'+id).classList.add('open');
+  if (id==='create-invoice') {
+    invLineCount=0;
+    document.getElementById('inv-lines').innerHTML='';
+    addInvLine();
+  }
+}
+function closeModal(id) { document.getElementById('modal-'+id).classList.remove('open'); }
+document.querySelectorAll('.overlay').forEach(o => o.addEventListener('click', e => { if(e.target===o) o.classList.remove('open'); }));
+
+// ============================================================
+// PAGE NAVIGATION
+// ============================================================
+function goPage(id, el) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  el.classList.add('active');
+  const titles = {
+    sched:'Live Scheduling', livedata:'Live Data Report', hosts:'Host Management',
+    payment:'Payment Calculation', agency:'Agency Calculation', invoice:'Invoice',
+    brands:'Brands & Akun', settings:'Settings'
+  };
+  const icons = {
+    sched:'ti-calendar-week', livedata:'ti-chart-line', hosts:'ti-users',
+    payment:'ti-cash', agency:'ti-calculator', invoice:'ti-file-invoice',
+    brands:'ti-building-store', settings:'ti-settings'
+  };
+  const actions = {
+    sched:`<button class="btn btn-secondary btn-sm" onclick="refreshData()"><i class="ti ti-refresh"></i>Refresh</button><button class="btn btn-primary btn-sm" onclick="openModal('add-session')"><i class="ti ti-plus"></i>Tambah Sesi</button>`,
+    livedata:`<button class="btn btn-primary btn-sm" onclick="openModal('add-livedata')"><i class="ti ti-plus"></i>Input Data</button>`,
+    hosts:`<button class="btn btn-primary btn-sm" onclick="showToast('Fitur tambah host segera hadir!')"><i class="ti ti-plus"></i>Tambah Host</button>`,
+    payment:`<button class="btn btn-secondary btn-sm"><i class="ti ti-download"></i>Export Excel</button>`,
+    agency:`<button class="btn btn-primary btn-sm" onclick="showToast('Fitur segera hadir!')"><i class="ti ti-plus"></i>Tambah</button>`,
+    invoice:`<button class="btn btn-primary btn-sm" onclick="openModal('create-invoice')"><i class="ti ti-plus"></i>Buat Invoice</button>`,
+    brands:`<button class="btn btn-primary btn-sm" onclick="showToast('Fitur tambah brand segera hadir!')"><i class="ti ti-plus"></i>Tambah Brand</button>`,
+    settings:''
+  };
+  document.getElementById('topbar-title').innerHTML = `<i class="ti ${icons[id]||'ti-grid'}"></i>${titles[id]||id}`;
+  document.getElementById('topbar-actions').innerHTML = actions[id]||'';
+
+  if(id==='payment') renderPayment();
+  if(id==='brands') renderBrands();
+  if(id==='livedata') loadLiveData();
+  if(id==='agency') renderAgency();
+  if(id==='invoice') renderInvoices();
+  if(id==='hosts') renderHosts();
+}
+
+// ============================================================
+// SETTINGS
+// ============================================================
+function saveSettings() {
+  const url = document.getElementById('set-url').value;
+  const key = document.getElementById('set-key').value;
+  try {
+    sb = supabase.createClient(url, key);
+    document.getElementById('conn-status').innerHTML = '<span style="color:var(--success)"><i class="ti ti-check"></i> Tersambung ke Supabase!</span>';
+    init();
+  } catch(e) {
+    document.getElementById('conn-status').innerHTML = '<span style="color:var(--danger)">Error: '+e.message+'</span>';
+  }
+}
+
+// ============================================================
+// UTILITIES
+// ============================================================
+function showToast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.innerHTML = `<i class="ti ${type==='error'?'ti-x':'ti-check'}"></i>${msg}`;
+  t.style.background = type==='error'?'var(--danger)':'#1a1a18';
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 3000);
+}
+
+function refreshData() { loadSessions(); showToast('Data diperbarui'); }
+function editSession(id) { showToast('Edit sesi: segera hadir di versi berikutnya'); }
+function editHost(id) { showToast('Edit host: segera hadir di versi berikutnya'); }
+
+function getDemoSessions(dates) {
+  return [
+    {id:'d1', brand_id:'1', platform:'TikTok', session_date:fmt(dates[0]), start_time:'08:00', duration_hours:6, host_ids:['h1'], status:'done'},
+    {id:'d2', brand_id:'1', platform:'Shopee', session_date:fmt(dates[0]), start_time:'08:00', duration_hours:6, host_ids:['h2'], status:'done'},
+    {id:'d3', brand_id:'3', platform:'TikTok', session_date:fmt(dates[0]), start_time:'09:00', duration_hours:4, host_ids:['h6'], status:'done'},
+    {id:'d4', brand_id:'2', platform:'TikTok', session_date:fmt(dates[1]), start_time:'08:00', duration_hours:6, host_ids:['h3','h7'], status:'done'},
+    {id:'d5', brand_id:'4', platform:'Tokopedia', session_date:fmt(dates[1]), start_time:'09:00', duration_hours:5, host_ids:['h10'], status:'done'},
+    {id:'d6', brand_id:'1', platform:'TikTok', session_date:fmt(dates[2]), start_time:'06:00', duration_hours:12, host_ids:['h4','h8','h9'], status:'scheduled', has_jumping:true},
+    {id:'d7', brand_id:'3', platform:'Shopee', session_date:fmt(dates[3]), start_time:'08:00', duration_hours:4, host_ids:['h11'], status:'scheduled'},
+    {id:'d8', brand_id:'1', platform:'Shopee', session_date:fmt(dates[4]), start_time:'08:00', duration_hours:6, host_ids:['h5','h6'], status:'scheduled'},
+    {id:'d9', brand_id:'2', platform:'TikTok', session_date:fmt(dates[5]), start_time:'08:00', duration_hours:6, host_ids:['h7','h8'], status:'scheduled'},
+  ];
+}
+
+// ============================================================
+// START
+// ============================================================
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
