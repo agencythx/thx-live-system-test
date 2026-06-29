@@ -690,12 +690,25 @@ function renderWeek(filtered) {
     html += `<tr><td class="td-t">${hStr}</td>`;
     dates.forEach((d,di)=>{
       const ds = strs[di];
-      const cells = filtered.filter(s=>{
+      // Only render block on start hour to avoid repeat
+      const startCells = filtered.filter(s=>{
+        if(s.session_date!==ds) return false;
+        return Math.floor(toHour(s.start_time))===h;
+      });
+      // Show continuation marker for sessions spanning this hour
+      const spanCells = filtered.filter(s=>{
         if(s.session_date!==ds) return false;
         const sh = toHour(s.start_time);
-        return sh<=h && sh+(s.duration_hours||0)>h;
+        return sh<h && sh+(s.duration_hours||0)>h;
       });
-      let inner = cells.map(s=>sessBlock(s)).join('');
+      let inner = startCells.map(s=>sessBlock(s)).join('');
+      if(spanCells.length && !startCells.length) {
+        inner = spanCells.map(s=>{
+          const plat=s.platform||'';
+          const cls=plat==='TikTok'?'sb-tk':plat==='Shopee'?'sb-sh':plat==='Tokopedia'?'sb-tp':'sb-ml';
+          return `<div class="sb ${cls}" style="opacity:.35;padding:1px 5px;font-size:9px">↕ ${(s.host_ids||[]).map(id=>hosts.find(h=>h.id===id)?.name||'?').join(',')}</div>`;
+        }).join('');
+      }
       html += `<td onclick="openQA(event,'${ds}',${h})" data-date="${ds}" data-hour="${h}">${inner}</td>`;
     });
     html += '</tr>';
@@ -789,14 +802,16 @@ function sessBlock(s, mini=false) {
   const cls = plat==='TikTok'?'sb-tk':plat==='Shopee'?'sb-sh':plat==='Tokopedia'?'sb-tp':'sb-ml';
   const warn = (s.has_conflict||s.has_jumping)?'<div class="wd"></div>':'';
   if(mini) return `<div class="sb ${cls}" title="${b?.name||''} | ${hNames} | ${s.start_time||''} ${s.duration_hours}j">${warn}<div class="sb-b">${b?.name||'—'}</div><div class="sb-h" style="font-size:9px">${hNames}</div></div>`;
-  return `<div class="sb ${cls}" style="cursor:default">
+  const endT = getEndTime(s);
+  const platLabel = plat==='TikTok'?'🎵 TikTok':plat==='Shopee'?'🛍 Shopee':plat==='Tokopedia'?'🟢 Tokped':plat;
+  return `<div class="sb ${cls}" style="cursor:default;padding:4px 6px 3px">
     ${warn}
-    <div class="sb-b">${b?.name||'—'}</div>
-    <div class="sb-h">${s.start_time||''} · ${s.duration_hours}j</div>
-    <div class="sb-h">${hNames}</div>
-    <div style="display:flex;gap:2px;margin-top:2px">
-      <button onclick="event.stopPropagation();openEditSession('${s.id}')" style="font-size:9px;padding:1px 4px;border:none;border-radius:3px;cursor:pointer;background:rgba(255,255,255,0.7);color:#333"><i class="ti ti-edit" style="font-size:9px"></i></button>
-      <button onclick="event.stopPropagation();deleteSession('${s.id}')" style="font-size:9px;padding:1px 4px;border:none;border-radius:3px;cursor:pointer;background:rgba(220,38,38,0.15);color:#991b1b"><i class="ti ti-trash" style="font-size:9px"></i></button>
+    <div style="font-size:12px;font-weight:700;line-height:1.2">${hNames}</div>
+    <div style="font-size:10px;margin-top:1px;opacity:.85">${b?.name||'—'}</div>
+    <div style="font-size:10px;opacity:.75">${platLabel} · ${s.start_time||''}-${endT} (${s.duration_hours}j)</div>
+    <div style="display:flex;gap:2px;margin-top:3px">
+      <button onclick="event.stopPropagation();openEditSession('${s.id}')" style="font-size:9px;padding:1px 5px;border:none;border-radius:3px;cursor:pointer;background:rgba(255,255,255,0.75);color:#444;font-family:inherit"><i class="ti ti-edit" style="font-size:9px"></i></button>
+      <button onclick="event.stopPropagation();deleteSession('${s.id}')" style="font-size:9px;padding:1px 5px;border:none;border-radius:3px;cursor:pointer;background:rgba(220,38,38,0.12);color:#991b1b;font-family:inherit"><i class="ti ti-trash" style="font-size:9px"></i></button>
     </div>
   </div>`;
 }
@@ -1347,85 +1362,156 @@ async function saveLiveData() {
 
 // ── AGENCY ────────────────────────────────────────────────────
 const AGENCY_DATA = [
-  {brand:"Hikmat",period:"March 2024",gmv:4000000,total_cogs:2450000,margin:400000,status:"Done"},
-  {brand:"Natur-E",period:"Ramadan 2024",gmv:51405000,total_cogs:37502000,margin:13903000,status:"Done"},
-  {brand:"Sebamed",period:"March 2024",gmv:3300000,total_cogs:2700000,margin:600000,status:"Done"},
-  {brand:"Instax",period:"28 Mar & 4 Apr 2024",gmv:1200000,total_cogs:850000,margin:350000,status:"Done"},
-  {brand:"Natur-E",period:"Lebaran 2024",gmv:9000000,total_cogs:8000000,margin:1000000,status:"Done"},
-  {brand:"Natur-E",period:"16 Apr - 15 May 2024",gmv:27600000,total_cogs:22250000,margin:5350000,status:"Done"},
-  {brand:"Natur-E",period:"16 May - 14 Jun 2024",gmv:27600000,total_cogs:21565000,margin:6035000,status:"Done"},
-  {brand:"Instax",period:"22 & 31 May 2024",gmv:1200000,total_cogs:900000,margin:300000,status:"Done"},
-  {brand:"Natur-E",period:"15 Jun - 14 Jul 2024",gmv:27830000,total_cogs:25782500,margin:2047500,status:"Done"},
-  {brand:"Natur-E Skincare",period:"21 Jun - 14 Jul 2024",gmv:5520000,total_cogs:0,margin:5520000,status:"Done"},
-  {brand:"Natur-E",period:"15 Jul - 13 Aug 2024",gmv:32775000,total_cogs:29760000,margin:3015000,status:"Done"},
-  {brand:"Natur-E Skincare",period:"15 Jul - 13 Aug 2024",gmv:6900000,total_cogs:0,margin:6900000,status:"Done"},
-  {brand:"Natur-E",period:"13 Aug - 12 Sep 2024",gmv:31280000,total_cogs:28850000,margin:2430000,status:"Done"},
-  {brand:"Natur-E Skincare",period:"13 Aug - 12 Sep 2024",gmv:6900000,total_cogs:0,margin:6900000,status:"Done"},
-  {brand:"Natur-E",period:"13 Sep - 12 Oct 2024",gmv:40480000,total_cogs:36525000,margin:3955000,status:"Done"},
-  {brand:"Natur-E Skincare",period:"13 Sep - 12 Oct 2024",gmv:6900000,total_cogs:0,margin:6900000,status:"Done"},
-  {brand:"Natur-E",period:"13 Oct - 11 Nov 2024",gmv:61120000,total_cogs:63400000,margin:-2280000,status:"Done"},
-  {brand:"Natur-E Skincare",period:"13 Oct - 11 Nov 2024",gmv:8300000,total_cogs:0,margin:8300000,status:"Done"},
-  {brand:"Natur-E",period:"12 Nov - 11 Dec 2024",gmv:72000000,total_cogs:64286800,margin:7713200,status:"Done"},
-  {brand:"Natur-E Skincare",period:"12 Nov - 11 Dec 2024",gmv:12000000,total_cogs:0,margin:12000000,status:"Done"},
-  {brand:"Herbablend",period:"28 Nov - 11 Dec 2024",gmv:2800000,total_cogs:2520000,margin:280000,status:"Done"},
-  {brand:"Natur-E",period:"12 - 31 Dec 2024",gmv:48000000,total_cogs:69350000,margin:-21350000,status:"Done"},
-  {brand:"Natur-E Skincare",period:"12 - 31 Dec 2024",gmv:8000000,total_cogs:0,margin:8000000,status:"Done"},
-  {brand:"Herbablend",period:"12 - 31 Dec 2024",gmv:4000000,total_cogs:5400000,margin:-1400000,status:"Done"},
-  {brand:"Natur-E",period:"Jan 2025",gmv:76200000,total_cogs:64100000,margin:12100000,status:"Done"},
-  {brand:"Natur-E Skincare",period:"Jan 2025",gmv:7600000,total_cogs:0,margin:7600000,status:"Done"},
-  {brand:"Herbablend",period:"Jan 2025",gmv:15150000,total_cogs:4950000,margin:10200000,status:"Done"},
-  {brand:"Natur-E",period:"Feb 2025",gmv:68400000,total_cogs:78920000,margin:-10520000,status:"Done"},
-  {brand:"Herbablend",period:"Feb 2025",gmv:13600000,total_cogs:2400000,margin:11200000,status:"Done"},
-  {brand:"Natur-E",period:"Mar 2025",gmv:75680000,total_cogs:69128000,margin:6552000,status:"Done"},
-  {brand:"Herbablend",period:"Mar 2025",gmv:18930000,total_cogs:3600000,margin:15330000,status:"Done"},
-  {brand:"Natur-E",period:"Apr 2025",gmv:70885000,total_cogs:78710000,margin:-7825000,status:"Done"},
-  {brand:"Herbablend",period:"Apr 2025",gmv:32000000,total_cogs:7125000,margin:24875000,status:"Done"},
-  {brand:"Natur-E",period:"May 2025",gmv:89100000,total_cogs:98325000,margin:-9225000,status:"Done"},
-  {brand:"Herbablend",period:"May 2025",gmv:60600000,total_cogs:0,margin:60600000,status:"Done"},
-  {brand:"Natur-E",period:"Jun 2025",gmv:137400000,total_cogs:96426000,margin:40974000,status:"Done"},
-  {brand:"Natur-E",period:"Jul 2025",gmv:130500000,total_cogs:80350000,margin:50150000,status:"Done"},
-  {brand:"Herbablend",period:"Jul 2025",gmv:4200000,total_cogs:5250000,margin:-1050000,status:"Done"},
-  {brand:"Natur-E",period:"Aug 2025",gmv:129300000,total_cogs:25431900,margin:103868100,status:"Done"},
-  {brand:"Herbablend",period:"Aug 2025",gmv:11700000,total_cogs:1500000,margin:10200000,status:"Done"},
-  {brand:"Natur-E",period:"Sep 2025",gmv:122800000,total_cogs:87591000,margin:35209000,status:"Done"},
-  {brand:"Herbablend",period:"Sep 2025",gmv:33900000,total_cogs:18000000,margin:15900000,status:"Done"},
-  {brand:"Natur-E",period:"Oct 2025",gmv:132150000,total_cogs:84804600,margin:47345400,status:"Done"},
-  {brand:"Herbablend",period:"Oct 2025",gmv:12400000,total_cogs:11575000,margin:825000,status:"Done"},
-  {brand:"Natur-E Colla",period:"Oct 2025",gmv:14750000,total_cogs:5400000,margin:9350000,status:"Done"},
-  {brand:"Natur-E",period:"Nov 2025",gmv:126000000,total_cogs:81250000,margin:44750000,status:"Done"},
-  {brand:"Herbablend",period:"Nov 2025",gmv:10200000,total_cogs:5400000,margin:4800000,status:"Done"},
-  {brand:"Natur-E Colla",period:"Nov 2025",gmv:9000000,total_cogs:10350000,margin:-1350000,status:"Done"},
-  {brand:"Natur-E",period:"Dec 2025",gmv:129000000,total_cogs:103400000,margin:25600000,status:"Done"},
-  {brand:"Herbablend",period:"Dec 2025",gmv:5300000,total_cogs:2850000,margin:2450000,status:"Done"},
-  {brand:"Natur-E Colla",period:"Dec 2025",gmv:15200000,total_cogs:11400000,margin:3800000,status:"Done"},
-  {brand:"Natur-E",period:"Jan 2026",gmv:130200000,total_cogs:91277300,margin:38922700,status:"Done"},
-  {brand:"Cerebrofort",period:"Jan 2026",gmv:24800000,total_cogs:11791000,margin:13009000,status:"Done"},
-  {brand:"Natur-E Colla",period:"Jan 2026",gmv:15500000,total_cogs:7875000,margin:7625000,status:"Done"},
-  {brand:"Natur-E Skincare",period:"Jan 2026",gmv:1200000,total_cogs:3825000,margin:-2625000,status:"Done"},
-  {brand:"Natur-E",period:"Feb 2026",gmv:101250000,total_cogs:82691000,margin:18559000,status:"Done"},
-  {brand:"Cerebrofort",period:"Feb 2026",gmv:30800000,total_cogs:15925000,margin:14875000,status:"Done"},
-  {brand:"Natur-E Colla",period:"Feb 2026",gmv:8100000,total_cogs:4825000,margin:3275000,status:"Done"},
-  {brand:"Natur-E Skincare",period:"Feb 2026",gmv:600000,total_cogs:450000,margin:150000,status:"Done"},
-  {brand:"Natur-E",period:"Mar 2026",gmv:144000000,total_cogs:159900000,margin:-15900000,status:"Done"},
-  {brand:"Cerebrofort",period:"Mar 2026",gmv:39900000,total_cogs:22575000,margin:17325000,status:"Done"},
-  {brand:"Natur-E Colla",period:"Mar 2026",gmv:16500000,total_cogs:9250000,margin:7250000,status:"Done"},
-  {brand:"Natur-E",period:"Apr 2026",gmv:65300000,total_cogs:70187900,margin:-4887900,status:"Done"},
-  {brand:"Cerebrofort",period:"Apr 2026",gmv:22800000,total_cogs:13650000,margin:9150000,status:"Done"},
-  {brand:"Natur-E Colla",period:"Apr 2026",gmv:18300000,total_cogs:9000000,margin:9300000,status:"Done"},
-  {brand:"Veluna",period:"Apr 2026",gmv:8800000,total_cogs:27735000,margin:-18935000,status:"Not Yet"},
+  {brand:"Hikmat",period:"March 2024",gmv:4000000,total_cogs:2450000,margin:400000,status:"Done",
+   cogs_detail:[{label:"Host - Fadila",amt:1200000},{label:"Host - Yoshinta",amt:250000},{label:"Host - Adisa",amt:300000},{label:"Host - Jose",amt:300000},{label:"Operator - Reza",amt:900000}]},
+  {brand:"Natur-E",period:"Ramadan 2024",gmv:51405000,total_cogs:37502000,margin:13903000,status:"Done",
+   cogs_detail:[{label:"Host - Candy",amt:5000000},{label:"Host - Kadrin",amt:4280000},{label:"Host - Zulfan",amt:300000},{label:"Operator - Reza",amt:8400000},{label:"Operator - Philip",amt:6900000},{label:"PM - Ilham",amt:3000000},{label:"TC - Dila",amt:1500000},{label:"Freelance TC",amt:600000},{label:"Alal",amt:600000},{label:"Bonus",amt:50000}]},
+  {brand:"Sebamed",period:"March 2024",gmv:3300000,total_cogs:2700000,margin:600000,status:"Done",
+   cogs_detail:[{label:"Host - Fadila",amt:600000},{label:"Host - Kadrin",amt:1200000},{label:"Operator - Reza",amt:300000},{label:"Operator - Philip",amt:450000},{label:"Alal",amt:150000}]},
+  {brand:"Instax",period:"28 Mar & 4 Apr 2024",gmv:1200000,total_cogs:850000,margin:350000,status:"Done",
+   cogs_detail:[{label:"Host - Dilla",amt:300000},{label:"Host - Mitha",amt:300000},{label:"Operator - Jose",amt:100000},{label:"Operator - Philip",amt:150000}]},
+  {brand:"Natur-E",period:"Lebaran 2024",gmv:9000000,total_cogs:8000000,margin:1000000,status:"Done",
+   cogs_detail:[{label:"Host - Kadrin",amt:5000000},{label:"Host - Eve",amt:4500000},{label:"Host - Indri",amt:4500000},{label:"Operator - Philip",amt:3000000}]},
+  {brand:"Natur-E",period:"16 Apr - 15 May 2024",gmv:27600000,total_cogs:22250000,margin:5350000,status:"Done",
+   cogs_detail:[{label:"Host - Amidala",amt:4500000},{label:"Host - Eve",amt:4500000},{label:"Host - Indri",amt:4500000},{label:"Operator - Philip",amt:4000000},{label:"Operator - Reza",amt:4000000},{label:"Bonus - a",amt:750000}]},
+  {brand:"Natur-E",period:"16 May - 14 Jun 2024",gmv:27600000,total_cogs:21565000,margin:6035000,status:"Done",
+   cogs_detail:[{label:"Host - Amidala",amt:4500000},{label:"Host - Eve",amt:4500000},{label:"Host - Indri",amt:4500000},{label:"Operator - Philip",amt:8000000},{label:"Transport",amt:65000}]},
+  {brand:"Instax",period:"22 & 31 May 2024",gmv:1200000,total_cogs:900000,margin:300000,status:"Done",
+   cogs_detail:[{label:"Host - Mitha",amt:600000},{label:"Operator - Philip",amt:300000}]},
+  {brand:"Natur-E",period:"15 Jun - 14 Jul 2024",gmv:27830000,total_cogs:25782500,margin:2047500,status:"Done",
+   cogs_detail:[{label:"Host - Dilla",amt:6000000},{label:"Host - Eve",amt:4620000},{label:"Host - Indri",amt:1687500},{label:"Host - Adel",amt:2475000},{label:"Operator - Philip",amt:11000000},{label:"Transport",amt:0}]},
+  {brand:"Natur-E Skincare",period:"21 Jun - 14 Jul 2024",gmv:5520000,total_cogs:0,margin:5520000,status:"Done",
+   cogs_detail:[{label:"COGS",amt:0}]},
+  {brand:"Natur-E",period:"15 Jul - 13 Aug 2024",gmv:32775000,total_cogs:29760000,margin:3015000,status:"Done",
+   cogs_detail:[{label:"Host - Dilla",amt:6000000},{label:"Host - Eve",amt:4610000},{label:"Host - Adel",amt:4850000},{label:"Host - Ica",amt:1150000},{label:"Additional",amt:600000},{label:"Operator - Philip",amt:12550000},{label:"Transport",amt:0}]},
+  {brand:"Natur-E Skincare",period:"15 Jul - 13 Aug 2024",gmv:6900000,total_cogs:0,margin:6900000,status:"Done",
+   cogs_detail:[{label:"COGS",amt:0}]},
+  {brand:"Natur-E",period:"13 Aug - 12 Sep 2024",gmv:31280000,total_cogs:28850000,margin:2430000,status:"Done",
+   cogs_detail:[{label:"Host - Dilla",amt:6000000},{label:"Host - Eve",amt:4850000},{label:"Host - Adel",amt:4850000},{label:"Freelance",amt:1000000},{label:"Additional",amt:150000},{label:"Operator - Philip",amt:12000000}]},
+  {brand:"Natur-E Skincare",period:"13 Aug - 12 Sep 2024",gmv:6900000,total_cogs:0,margin:6900000,status:"Done",
+   cogs_detail:[{label:"COGS",amt:0}]},
+  {brand:"Natur-E",period:"13 Sep - 12 Oct 2024",gmv:40480000,total_cogs:36525000,margin:3955000,status:"Done",
+   cogs_detail:[{label:"Host - Dilla",amt:6200000},{label:"Host - Eve",amt:4850000},{label:"Host - Adel",amt:4850000},{label:"Freelance",amt:6125000},{label:"Operator - Philip",amt:14500000}]},
+  {brand:"Natur-E Skincare",period:"13 Sep - 12 Oct 2024",gmv:6900000,total_cogs:0,margin:6900000,status:"Done",
+   cogs_detail:[{label:"COGS",amt:0}]},
+  {brand:"Natur-E",period:"13 Oct - 11 Nov 2024",gmv:61120000,total_cogs:63400000,margin:-2280000,status:"Done",
+   cogs_detail:[{label:"Host - Dilla",amt:6000000},{label:"Host - Eve",amt:4610000},{label:"Host - Adel",amt:4850000},{label:"Freelance",amt:20550000},{label:"Operator - Philip",amt:22000000},{label:"Profit Sharing OP",amt:5390000}]},
+  {brand:"Natur-E Skincare",period:"13 Oct - 11 Nov 2024",gmv:8300000,total_cogs:0,margin:8300000,status:"Done",
+   cogs_detail:[{label:"COGS",amt:0}]},
+  {brand:"Natur-E",period:"12 Nov - 11 Dec 2024",gmv:72000000,total_cogs:64286800,margin:7713200,status:"Done",
+   cogs_detail:[{label:"Host - Dilla",amt:6200000},{label:"Host - Eve",amt:5000000},{label:"Host - Adel",amt:5100000},{label:"Host - Candy",amt:4200000},{label:"Host - Lulu",amt:4500000},{label:"Host - Rana",amt:4500000},{label:"Host - Zara",amt:4500000},{label:"Freelance",amt:300000},{label:"Operator - Philip",amt:28000000},{label:"Pulsa",amt:486800},{label:"Entertainment",amt:1500000}]},
+  {brand:"Natur-E Skincare",period:"12 Nov - 11 Dec 2024",gmv:12000000,total_cogs:0,margin:12000000,status:"Done",
+   cogs_detail:[{label:"COGS",amt:0}]},
+  {brand:"Herbablend",period:"28 Nov - 11 Dec 2024",gmv:2800000,total_cogs:2520000,margin:280000,status:"Done",
+   cogs_detail:[{label:"Host (semua)",amt:1400000},{label:"Operator - Philip",amt:1120000}]},
+  {brand:"Natur-E",period:"12 - 31 Dec 2024",gmv:48000000,total_cogs:69350000,margin:-21350000,status:"Done",
+   cogs_detail:[{label:"Host - Dilla",amt:6200000},{label:"Host - Eve",amt:5000000},{label:"Host - Adel",amt:5100000},{label:"Host - Fadia",amt:4500000},{label:"Host - Lulu",amt:4250000},{label:"Host - Rana",amt:4500000},{label:"Host - Zara",amt:4500000},{label:"Freelance",amt:2300000},{label:"Operator - Philip",amt:28000000},{label:"Profit Sharing",amt:5000000}]},
+  {brand:"Natur-E Skincare",period:"12 - 31 Dec 2024",gmv:8000000,total_cogs:0,margin:8000000,status:"Done",
+   cogs_detail:[{label:"COGS",amt:0}]},
+  {brand:"Herbablend",period:"12 - 31 Dec 2024",gmv:4000000,total_cogs:5400000,margin:-1400000,status:"Done",
+   cogs_detail:[{label:"Host (semua)",amt:3000000},{label:"Operator - Philip",amt:2400000}]},
+  {brand:"Natur-E",period:"Jan 2025",gmv:76200000,total_cogs:64100000,margin:12100000,status:"Done",
+   cogs_detail:[{label:"Host - Dilla",amt:6200000},{label:"Host - Eve",amt:5000000},{label:"Host - Adel",amt:5100000},{label:"Host - Fadia",amt:4500000},{label:"Host - Lulu",amt:4500000},{label:"Host - Rana",amt:4500000},{label:"Host - Zara",amt:4500000},{label:"Freelance",amt:1800000},{label:"Operator - Philip",amt:28000000}]},
+  {brand:"Natur-E Skincare",period:"Jan 2025",gmv:7600000,total_cogs:0,margin:7600000,status:"Done",
+   cogs_detail:[{label:"COGS",amt:0}]},
+  {brand:"Herbablend",period:"Jan 2025",gmv:15150000,total_cogs:4950000,margin:10200000,status:"Done",
+   cogs_detail:[{label:"Host (semua)",amt:4950000}]},
+  {brand:"Natur-E",period:"Feb 2025",gmv:68400000,total_cogs:78920000,margin:-10520000,status:"Done",
+   cogs_detail:[{label:"Host - Dilla",amt:6200000},{label:"Host - Eve",amt:5000000},{label:"Host - Adel",amt:5100000},{label:"Host - Fadia",amt:4500000},{label:"Host - Lulu",amt:4500000},{label:"Host - Rana",amt:4500000},{label:"Host - Zara",amt:4500000},{label:"Freelance",amt:1620000},{label:"THR Host",amt:9133333},{label:"Operator - Philip",amt:28000000},{label:"THR OP",amt:5866667}]},
+  {brand:"Herbablend",period:"Feb 2025",gmv:13600000,total_cogs:2400000,margin:11200000,status:"Done",
+   cogs_detail:[{label:"Host (semua)",amt:2400000}]},
+  {brand:"Natur-E",period:"Mar 2025",gmv:75680000,total_cogs:69128000,margin:6552000,status:"Done",
+   cogs_detail:[{label:"Host - Dilla",amt:6200000},{label:"Host - Eve",amt:5000000},{label:"Host - Adel",amt:5100000},{label:"Host - Fadia",amt:4500000},{label:"Host - Lulu",amt:4500000},{label:"Host - Rana",amt:4500000},{label:"Host - Zara",amt:4500000},{label:"Host - Tasya",amt:1728000},{label:"Freelance",amt:4200000},{label:"Operator - Philip",amt:28900000}]},
+  {brand:"Herbablend",period:"Mar 2025",gmv:18930000,total_cogs:3600000,margin:15330000,status:"Done",
+   cogs_detail:[{label:"Freelance Herba",amt:3600000}]},
+  {brand:"Natur-E",period:"Apr 2025",gmv:70885000,total_cogs:78710000,margin:-7825000,status:"Done",
+   cogs_detail:[{label:"Host - Dilla",amt:6200000},{label:"Host - Eve",amt:5000000},{label:"Host - Adel",amt:5100000},{label:"Host - Fadia",amt:4500000},{label:"Host - Lulu",amt:4500000},{label:"Host - Rana",amt:4500000},{label:"Host - Zara",amt:4500000},{label:"Host - Tasya",amt:4750000},{label:"Host - Kadrien",amt:1673000},{label:"Host - Vanny",amt:2045500},{label:"Freelance",amt:1425000},{label:"Operator - Philip",amt:29516500},{label:"Entertainment Dufan",amt:5000000}]},
+  {brand:"Herbablend",period:"Apr 2025",gmv:32000000,total_cogs:7125000,margin:24875000,status:"Done",
+   cogs_detail:[{label:"Freelance Herba",amt:7125000}]},
+  {brand:"Natur-E",period:"May 2025",gmv:89100000,total_cogs:98325000,margin:-9225000,status:"Done",
+   cogs_detail:[{label:"Host - Dila",amt:6200000},{label:"Host - Adel",amt:5100000},{label:"Host - Fadia",amt:4500000},{label:"Host - Lulu",amt:4500000},{label:"Host - Rana",amt:4500000},{label:"Host - Zara",amt:4500000},{label:"Host - Tasya",amt:4750000},{label:"Host - Vanny",amt:4500000},{label:"Host - Febri",amt:2500000},{label:"Freelance",amt:26775000},{label:"Operator - Philip",amt:30500000}]},
+  {brand:"Herbablend",period:"May 2025",gmv:60600000,total_cogs:0,margin:60600000,status:"Done",
+   cogs_detail:[{label:"Freelance Herba",amt:0}]},
+  {brand:"Natur-E",period:"Jun 2025",gmv:137400000,total_cogs:96426000,margin:40974000,status:"Done",
+   cogs_detail:[{label:"Host - Dila",amt:6200000},{label:"Host - Adel",amt:5100000},{label:"Host - Fadia",amt:4500000},{label:"Host - Lulu",amt:4500000},{label:"Host - Rana",amt:4500000},{label:"Host - Zara",amt:4500000},{label:"Host - Tasya",amt:4750000},{label:"Host - Vanny",amt:4500000},{label:"Host - Ginta",amt:3845500},{label:"Host - Ervindy",amt:2500000},{label:"Freelance",amt:11850000},{label:"Operator - Philip",amt:29500500},{label:"Laundry",amt:180000},{label:"Profit Sharing Philip",amt:5500000},{label:"Profit Sharing Dila",amt:4500000}]},
+  {brand:"Natur-E",period:"Jul 2025",gmv:130500000,total_cogs:80350000,margin:50150000,status:"Done",
+   cogs_detail:[{label:"Host - Dila",amt:6200000},{label:"Host - Adel",amt:5100000},{label:"Host - Fadia",amt:4500000},{label:"Host - Lulu",amt:4500000},{label:"Host - Rana",amt:4500000},{label:"Host - Zara",amt:4500000},{label:"Host - Tasya",amt:4750000},{label:"Host - Vanny",amt:4500000},{label:"Host - Ginta",amt:4700000},{label:"Host - Ervindy",amt:5000000},{label:"Freelance",amt:2100000},{label:"Operator - Philip",amt:30000000}]},
+  {brand:"Herbablend",period:"Jul 2025",gmv:4200000,total_cogs:5250000,margin:-1050000,status:"Done",
+   cogs_detail:[{label:"Freelance",amt:5250000}]},
+  {brand:"Natur-E",period:"Aug 2025",gmv:129300000,total_cogs:25431900,margin:103868100,status:"Done",
+   cogs_detail:[{label:"Host - Dila",amt:2254600},{label:"Host - Adel",amt:1622800},{label:"Host - Fadia",amt:1431900},{label:"Host - Lulu",amt:1431900},{label:"Host - Rana",amt:1431900},{label:"Host - Zara",amt:1431900},{label:"Host - Tasya",amt:1511400},{label:"Host - Vanny",amt:1841000},{label:"Host - Ginta",amt:641000},{label:"Host - Ervindy",amt:1818200},{label:"Host - Yoan",amt:681900},{label:"Operator - Philip",amt:9333400}]},
+  {brand:"Herbablend",period:"Aug 2025",gmv:11700000,total_cogs:1500000,margin:10200000,status:"Done",
+   cogs_detail:[{label:"Freelance",amt:1500000}]},
+  {brand:"Natur-E",period:"Sep 2025",gmv:122800000,total_cogs:87591000,margin:35209000,status:"Done",
+   cogs_detail:[{label:"Host - Dila",amt:6200000},{label:"Host - Adel",amt:5100000},{label:"Host - Fadia",amt:4700000},{label:"Host - Lulu",amt:4700000},{label:"Host - Rana",amt:5000000},{label:"Host - Zara",amt:4700000},{label:"Host - Tasya",amt:4750000},{label:"Host - Vanny",amt:4500000},{label:"Host - Febri",amt:3927300},{label:"Host - Ervindy",amt:5000000},{label:"Host - Yoan",amt:2963700},{label:"Freelance NE",amt:3150000},{label:"Backup Yoan",amt:2400000},{label:"Backup Adel",amt:1500000},{label:"Operator - Philip",amt:29000000}]},
+  {brand:"Herbablend",period:"Sep 2025",gmv:33900000,total_cogs:18000000,margin:15900000,status:"Done",
+   cogs_detail:[{label:"Freelance",amt:18000000}]},
+  {brand:"Natur-E",period:"Oct 2025",gmv:132150000,total_cogs:84804600,margin:47345400,status:"Done",
+   cogs_detail:[{label:"Host - Dila",amt:5100000},{label:"Host - Adel",amt:6200000},{label:"Host - Fadia",amt:4700000},{label:"Host - Lulu",amt:4700000},{label:"Host - Rana",amt:5000000},{label:"Host - Zara",amt:4700000},{label:"Host - Tasya",amt:4750000},{label:"Host - Vanny",amt:4500000},{label:"Host - Nadia",amt:4318200},{label:"Host - Ervindy",amt:3636400},{label:"Freelance NE",amt:4500000},{label:"Backup Ervindy",amt:2100000},{label:"Operator - Philip",amt:30000000},{label:"Entertainment 10.10",amt:500000},{label:"Laundry",amt:100000}]},
+  {brand:"Herbablend",period:"Oct 2025",gmv:12400000,total_cogs:11575000,margin:825000,status:"Done",
+   cogs_detail:[{label:"Freelance",amt:11575000}]},
+  {brand:"Natur-E Colla",period:"Oct 2025",gmv:14750000,total_cogs:5400000,margin:9350000,status:"Done",
+   cogs_detail:[{label:"Host - Candy",amt:2250000},{label:"Freelance",amt:3150000}]},
+  {brand:"Natur-E",period:"Nov 2025",gmv:126000000,total_cogs:81250000,margin:44750000,status:"Done",
+   cogs_detail:[{label:"Host - Dila",amt:6200000},{label:"Host - Adel",amt:5100000},{label:"Host - Fadia",amt:4700000},{label:"Host - Lulu",amt:4700000},{label:"Host - Rana",amt:5000000},{label:"Host - Zara",amt:4700000},{label:"Host - Tasya",amt:4750000},{label:"Host - Vanny",amt:4500000},{label:"Host - Dinda",amt:5000000},{label:"Host - Nadia",amt:5000000},{label:"Host - Candy",amt:1250000},{label:"Freelance NE",amt:1350000},{label:"Operator - Philip",amt:29000000}]},
+  {brand:"Herbablend",period:"Nov 2025",gmv:10200000,total_cogs:5400000,margin:4800000,status:"Done",
+   cogs_detail:[{label:"Freelance",amt:5400000}]},
+  {brand:"Natur-E Colla",period:"Nov 2025",gmv:9000000,total_cogs:10350000,margin:-1350000,status:"Done",
+   cogs_detail:[{label:"Freelance",amt:10350000}]},
+  {brand:"Natur-E",period:"Dec 2025",gmv:129000000,total_cogs:103400000,margin:25600000,status:"Done",
+   cogs_detail:[{label:"Host - Dila",amt:6200000},{label:"Host - Adel",amt:5100000},{label:"Host - Fadia",amt:4700000},{label:"Host - Lulu",amt:4700000},{label:"Host - Rana",amt:5000000},{label:"Host - Zara",amt:4700000},{label:"Host - Tasya",amt:4750000},{label:"Host - Dinda",amt:5000000},{label:"Host - Nadia",amt:5000000},{label:"Freelance NE",amt:6250000},{label:"Operator - Philip",amt:29000000},{label:"Entertainment",amt:5500000},{label:"Aset Mic",amt:1500000},{label:"Profit Sharing Philip",amt:8000000},{label:"Profit Sharing Dila",amt:8000000}]},
+  {brand:"Herbablend",period:"Dec 2025",gmv:5300000,total_cogs:2850000,margin:2450000,status:"Done",
+   cogs_detail:[{label:"Freelance",amt:2850000}]},
+  {brand:"Natur-E Colla",period:"Dec 2025",gmv:15200000,total_cogs:11400000,margin:3800000,status:"Done",
+   cogs_detail:[{label:"Freelance Colla",amt:11400000}]},
+  {brand:"Natur-E",period:"Jan 2026",gmv:130200000,total_cogs:91277300,margin:38922700,status:"Done",
+   cogs_detail:[{label:"Host - Dila",amt:6200000},{label:"Host - Adel",amt:5100000},{label:"Host - Fadia",amt:4700000},{label:"Host - Lulu",amt:4700000},{label:"Host - Rana",amt:5000000},{label:"Host - Zara",amt:4700000},{label:"Host - Tasya",amt:4750000},{label:"Host - Dinda",amt:5000000},{label:"Host - Nadia",amt:5000000},{label:"Host - Indy",amt:2727300},{label:"Freelance NE",amt:8400000},{label:"Operator - Philip",amt:32000000},{label:"Bonus Operator",amt:3000000}]},
+  {brand:"Cerebrofort",period:"Jan 2026",gmv:24800000,total_cogs:11791000,margin:13009000,status:"Done",
+   cogs_detail:[{label:"Host - Tira",amt:4091000},{label:"Freelance",amt:7700000}]},
+  {brand:"Natur-E Colla",period:"Jan 2026",gmv:15500000,total_cogs:7875000,margin:7625000,status:"Done",
+   cogs_detail:[{label:"Freelance Colla",amt:7875000}]},
+  {brand:"Natur-E Skincare",period:"Jan 2026",gmv:1200000,total_cogs:3825000,margin:-2625000,status:"Done",
+   cogs_detail:[{label:"Freelance",amt:3825000}]},
+  {brand:"Natur-E",period:"Feb 2026",gmv:101250000,total_cogs:82691000,margin:18559000,status:"Done",
+   cogs_detail:[{label:"Host - Dila",amt:6300000},{label:"Host - Adel",amt:5100000},{label:"Host - Fadia",amt:4700000},{label:"Host - Lulu",amt:4700000},{label:"Host - Rana",amt:5000000},{label:"Host - Zara",amt:4700000},{label:"Host - Tasya",amt:4750000},{label:"Host - Dinda",amt:5000000},{label:"Host - Nadia",amt:5000000},{label:"Host - Indy",amt:1491000},{label:"Freelance NE",amt:3450000},{label:"Operator - Philip",amt:32000000},{label:"Entertainment",amt:500000}]},
+  {brand:"Cerebrofort",period:"Feb 2026",gmv:30800000,total_cogs:15925000,margin:14875000,status:"Done",
+   cogs_detail:[{label:"Host - Tira",amt:5000000},{label:"Freelance",amt:10925000}]},
+  {brand:"Natur-E Colla",period:"Feb 2026",gmv:8100000,total_cogs:4825000,margin:3275000,status:"Done",
+   cogs_detail:[{label:"Freelance Colla",amt:4825000}]},
+  {brand:"Natur-E Skincare",period:"Feb 2026",gmv:600000,total_cogs:450000,margin:150000,status:"Done",
+   cogs_detail:[{label:"Freelance",amt:450000}]},
+  {brand:"Natur-E",period:"Mar 2026",gmv:144000000,total_cogs:159900000,margin:-15900000,status:"Done",
+   cogs_detail:[{label:"Host - Dila",amt:6200000},{label:"Host - Adel",amt:5100000},{label:"Host - Fadia",amt:4700000},{label:"Host - Lulu",amt:4700000},{label:"Host - Rana",amt:5000000},{label:"Host - Zara",amt:4700000},{label:"Host - Tasya",amt:4750000},{label:"Host - Dinda",amt:5000000},{label:"Host - Nadia",amt:5000000},{label:"Freelance NE",amt:12350000},{label:"THR",amt:51000000},{label:"Freelance Lebaran",amt:16400000},{label:"Operator - Philip",amt:32000000},{label:"Entertainment",amt:3000000}]},
+  {brand:"Cerebrofort",period:"Mar 2026",gmv:39900000,total_cogs:22575000,margin:17325000,status:"Done",
+   cogs_detail:[{label:"Host - Tira",amt:5000000},{label:"Freelance",amt:16175000},{label:"Freelance Lebaran",amt:1400000}]},
+  {brand:"Natur-E Colla",period:"Mar 2026",gmv:16500000,total_cogs:9250000,margin:7250000,status:"Done",
+   cogs_detail:[{label:"Freelance Colla",amt:7750000},{label:"Freelance Colla Lebaran",amt:1500000}]},
+  {brand:"Natur-E",period:"Apr 2026",gmv:65300000,total_cogs:70187900,margin:-4887900,status:"Done",
+   cogs_detail:[{label:"Host - Fadila",amt:6200000},{label:"Host - Fadia",amt:6024600},{label:"Host - Lulu",amt:4700000},{label:"Host - Rana",amt:5000000},{label:"Host - Zara",amt:6024600},{label:"Host - Tasya",amt:6088700},{label:"Host - Nadia",amt:5000000},{label:"Host - Dinda",amt:5000000},{label:"Freelance NE",amt:2400000},{label:"Completion Bonus Byan",amt:2750000},{label:"Operator - Philip",amt:21000000}]},
+  {brand:"Cerebrofort",period:"Apr 2026",gmv:22800000,total_cogs:13650000,margin:9150000,status:"Done",
+   cogs_detail:[{label:"Freelance",amt:13250000},{label:"Addon 2 Host",amt:400000}]},
+  {brand:"Natur-E Colla",period:"Apr 2026",gmv:18300000,total_cogs:9000000,margin:9300000,status:"Done",
+   cogs_detail:[{label:"Freelance Colla",amt:9000000}]},
+  {brand:"Veluna",period:"Apr 2026",gmv:8800000,total_cogs:27735000,margin:-18935000,status:"Not Yet",
+   cogs_detail:[{label:"Freelance Veluna",amt:27735000}]},
 ];
 
 let agFilter = 'all';
+function toggleAgDetail(id) {
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.style.display = el.style.display==='none' ? 'table-row' : 'none';
+}
 let agSearch = '';
 
 function renderAgency() {
   const totalGmv = AGENCY_DATA.reduce((a,p)=>a+p.gmv,0);
   const totalCogs = AGENCY_DATA.reduce((a,p)=>a+p.total_cogs,0);
   const totalGp = AGENCY_DATA.reduce((a,p)=>a+p.margin,0);
-  document.getElementById('ag-gmv').textContent = fmtRp(totalGmv);
-  document.getElementById('ag-cogs').textContent = fmtRp(totalCogs);
-  document.getElementById('ag-gp').textContent = fmtRp(totalGp);
-  document.getElementById('ag-pct').textContent = (totalGp/totalGmv*100).toFixed(1)+'%';
+  document.getElementById('ag-gmv').textContent = 'Rp '+totalGmv.toLocaleString('id');
+  document.getElementById('ag-cogs').textContent = 'Rp '+totalCogs.toLocaleString('id');
+  document.getElementById('ag-gp').textContent = 'Rp '+totalGp.toLocaleString('id');
+  document.getElementById('ag-pct').textContent = (totalGp/totalGmv*100).toFixed(2)+'%';
 
   const filtered = AGENCY_DATA.filter(p=>{
     if(agFilter!=='all' && p.brand!==agFilter) return false;
@@ -1444,7 +1530,8 @@ function renderAgency() {
   filtered.forEach((p,i)=>{
     const gp_pct = p.gmv>0?(p.margin/p.gmv*100).toFixed(1):0;
     const gpColor = p.margin<0?'var(--red)':p.margin/p.gmv<0.1?'var(--amber)':'var(--green)';
-    html+=`<tr>
+    const rowId = 'ag-detail-'+i;
+    html+=`<tr style="cursor:pointer" onclick="toggleAgDetail('${rowId}')">
       <td style="color:var(--t3);font-size:11px">${i+1}</td>
       <td><b>${p.brand}</b></td>
       <td style="color:var(--t2);font-size:12px">${p.period}</td>
@@ -1452,7 +1539,25 @@ function renderAgency() {
       <td style="color:var(--t2)">Rp ${p.total_cogs.toLocaleString('id')}</td>
       <td style="color:${gpColor};font-weight:600">Rp ${p.margin.toLocaleString('id')}</td>
       <td style="color:${gpColor};font-weight:500">${gp_pct}%</td>
-      <td><span class="badge ${p.status==='Done'?'b-green':'b-amber'}">${p.status}</span></td>
+      <td><span class="badge ${p.status==='Done'?'b-green':'b-amber'}">${p.status}</span> <i class="ti ti-chevron-down" style="font-size:10px;color:var(--t3)"></i></td>
+    </tr>
+    <tr id="${rowId}" style="display:none;background:var(--s2)">
+      <td colspan="8" style="padding:6px 16px 10px 32px">
+        <div style="font-size:11px;font-weight:600;color:var(--t3);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em">Detail COGS — ${p.brand} ${p.period}</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:4px">
+          ${(p.cogs_detail||[]).map(c=>`
+            <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 8px;background:var(--surface);border-radius:4px;border:.5px solid var(--border)">
+              <span style="color:var(--t2)">${c.label}</span>
+              <span style="font-weight:500">Rp ${c.amt.toLocaleString('id')}</span>
+            </div>`).join('')}
+        </div>
+        <div style="margin-top:6px;padding:4px 8px;background:var(--surface);border-radius:4px;display:flex;justify-content:space-between;font-size:12px;font-weight:600;border:.5px solid var(--border2)">
+          <span>Total COGS</span><span>Rp ${p.total_cogs.toLocaleString('id')}</span>
+        </div>
+        <div style="margin-top:2px;padding:4px 8px;background:${p.margin>=0?'var(--gbg)':'var(--rbg)'};border-radius:4px;display:flex;justify-content:space-between;font-size:12px;font-weight:600;border:.5px solid ${p.margin>=0?'#86efac':'#fca5a5'}">
+          <span>Gross Profit</span><span style="color:${gpColor}">Rp ${p.margin.toLocaleString('id')} (${gp_pct}%)</span>
+        </div>
+      </td>
     </tr>`;
   });
   html+=`<tr class="sum-row">
