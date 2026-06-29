@@ -324,8 +324,17 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-d
     <div class="stat"><div class="stat-l">Gross Profit</div><div class="stat-v" id="ag-gp" style="font-size:13px;color:var(--green)">—</div></div>
     <div class="stat"><div class="stat-l">GP %</div><div class="stat-v" id="ag-pct">—</div></div>
   </div>
-  <div class="card"><div class="ch"><h4><i class="ti ti-table"></i>Kalkulasi per brand</h4><button class="btn btn-p btn-xs" onclick="showToast('Segera hadir')"><i class="ti ti-plus"></i>Tambah</button></div>
-  <div style="overflow-x:auto"><table class="dt" id="ag-table"></table></div></div>
+  <div style="display:flex;gap:8px;margin-bottom:.9rem;flex-wrap:wrap">
+    <select id="ag-brand-filter" onchange="agFilter=this.value;renderAgency()" style="font-size:12px;padding:5px 9px;border:.5px solid var(--border2);border-radius:var(--r);background:var(--surface)">
+      <option value="all">Semua brand</option>
+      <option>Natur-E</option><option>Natur-E Colla</option><option>Natur-E Skincare</option>
+      <option>Cerebrofort</option><option>Herbablend</option><option>Veluna</option>
+      <option>Hikmat</option><option>Sebamed</option><option>Instax</option>
+    </select>
+    <input type="text" placeholder="Cari brand / periode..." oninput="agSearch=this.value.toLowerCase();renderAgency()" style="font-size:12px;padding:5px 9px;border:.5px solid var(--border2);border-radius:var(--r);background:var(--surface);width:200px">
+  </div>
+  <div class="card"><div class="ch"><h4><i class="ti ti-table"></i>Semua project — 66 records dari CSV</h4><button class="btn btn-p btn-xs" onclick="showToast('Segera: tambah project baru')"><i class="ti ti-plus"></i>Tambah</button></div>
+  <div style="overflow-x:auto;max-height:500px"><table class="dt" id="ag-table"></table></div></div>
 </div>
 
 <!-- ===== INVOICE ===== -->
@@ -716,26 +725,61 @@ function renderMonth(filtered) {
 function renderHostView(filtered) {
   const dates = getWeekDates(schedOffset);
   const strs = dates.map(fmt);
-  // Get unique hosts that have sessions this period
-  const activeHostIds = [...new Set(filtered.flatMap(s=>s.host_ids||[]))];
-  const activeHosts = hosts.filter(h=>activeHostIds.includes(h.id));
-  let html = '<thead><tr><th class="host-col">Host</th>';
-  dates.forEach(d=>{html+=`<th>${fmtD(d)}</th>`;});
-  html += '</tr></thead><tbody>';
-  if(!activeHosts.length) {
-    html += '<tr><td colspan="8" style="padding:2rem;text-align:center;color:var(--t3)">Tidak ada jadwal minggu ini</td></tr>';
-  }
-  activeHosts.forEach(h=>{
-    html += `<tr><td class="host-col"><div style="display:flex;align-items:center;gap:5px"><span class="av ${h.type==='fulltime'?'av-ft':'av-fl'}">${h.name.slice(0,2).toUpperCase()}</span>${h.name}</div></td>`;
+  // Show ALL hosts, sorted: FT first then FL
+  const sortedHosts = [...hosts].sort((a,b)=>{
+    if(a.type===b.type) return a.name.localeCompare(b.name);
+    return a.type==='fulltime'?-1:1;
+  });
+  let html = '<thead><tr><th class="host-col" style="min-width:110px">Host</th>';
+  dates.forEach(d=>{html+=`<th style="min-width:100px">${fmtD(d)}</th>`;});
+  html += '<th style="min-width:60px">Total</th></tr></thead><tbody>';
+  sortedHosts.forEach(h=>{
+    const weekSess = filtered.filter(s=>(s.host_ids||[]).includes(h.id));
+    const weekHrs = weekSess.reduce((a,s)=>a+(s.duration_hours||0),0);
+    html += `<tr>
+      <td class="host-col">
+        <div style="display:flex;align-items:center;gap:5px">
+          <span class="av ${h.type==='fulltime'?'av-ft':'av-fl'}">${h.name.slice(0,2).toUpperCase()}</span>
+          <div><div style="font-weight:500;font-size:12px">${h.name}</div>
+          <div style="font-size:10px;color:var(--t3)">${h.type==='fulltime'?'Fulltime':'Freelance'}</div></div>
+        </div>
+      </td>`;
     dates.forEach((_,di)=>{
       const ds = strs[di];
       const hSess = filtered.filter(s=>s.session_date===ds&&(s.host_ids||[]).includes(h.id));
-      html += `<td>${hSess.map(s=>sessBlock(s,true)).join('')}</td>`;
+      const dayHrs = hSess.reduce((a,s)=>a+(s.duration_hours||0),0);
+      if(!hSess.length){
+        html += `<td style="background:var(--s2);text-align:center"><span style="font-size:10px;color:var(--t3)">—</span></td>`;
+      } else {
+        html += `<td>`;
+        hSess.forEach(s=>{
+          const b=brands.find(x=>x.id===s.brand_id);
+          const plat=s.platform||'';
+          const cls=plat==='TikTok'?'sb-tk':plat==='Shopee'?'sb-sh':plat==='Tokopedia'?'sb-tp':'sb-ml';
+          html+=`<div class="sb ${cls}" style="margin-bottom:2px">
+            <div class="sb-b" style="font-size:11px">${b?.name||'—'}</div>
+            <div class="sb-h" style="font-size:10px;font-weight:600">${s.start_time||''} – ${getEndTime(s)} (${s.duration_hours}j)</div>
+            <div class="sb-h" style="font-size:10px">${plat}</div>
+          </div>`;
+        });
+        if(dayHrs>0) html+=`<div style="font-size:10px;color:var(--t3);text-align:right;padding:2px 4px">Total: <b>${dayHrs}j</b></div>`;
+        html+=`</td>`;
+      }
     });
+    html += `<td style="text-align:center;font-size:12px;font-weight:600;color:${weekHrs>0?'var(--accent)':'var(--t3)'}">${weekHrs>0?weekHrs+'j':'—'}</td>`;
     html += '</tr>';
   });
   html += '</tbody>';
   document.getElementById('host-grid').innerHTML = html;
+}
+
+function getEndTime(s) {
+  if(!s.start_time) return '';
+  const [h,m] = s.start_time.split(':').map(Number);
+  const totalMin = h*60 + m + (s.duration_hours||0)*60;
+  const endH = Math.floor(totalMin/60)%24;
+  const endM = Math.round(totalMin%60);
+  return String(endH).padStart(2,'0')+':'+String(endM).padStart(2,'0');
 }
 
 function sessBlock(s, mini=false) {
@@ -744,9 +788,16 @@ function sessBlock(s, mini=false) {
   const plat = s.platform||'';
   const cls = plat==='TikTok'?'sb-tk':plat==='Shopee'?'sb-sh':plat==='Tokopedia'?'sb-tp':'sb-ml';
   const warn = (s.has_conflict||s.has_jumping)?'<div class="wd"></div>':'';
-  if(mini) return `<div class="sb ${cls}" title="${b?.name||''} | ${hNames} | ${s.start_time} ${s.duration_hours}j">${warn}<div class="sb-b">${b?.name||'—'}</div></div>`;
-  return `<div class="sb ${cls}" onclick="event.stopPropagation();editSession('${s.id}')" title="${b?.name||''} | ${hNames}">
-    ${warn}<div class="sb-b">${b?.name||'—'}</div><div class="sb-h">${s.start_time} · ${s.duration_hours}j · ${hNames}</div>
+  if(mini) return `<div class="sb ${cls}" title="${b?.name||''} | ${hNames} | ${s.start_time||''} ${s.duration_hours}j">${warn}<div class="sb-b">${b?.name||'—'}</div><div class="sb-h" style="font-size:9px">${hNames}</div></div>`;
+  return `<div class="sb ${cls}" style="cursor:default">
+    ${warn}
+    <div class="sb-b">${b?.name||'—'}</div>
+    <div class="sb-h">${s.start_time||''} · ${s.duration_hours}j</div>
+    <div class="sb-h">${hNames}</div>
+    <div style="display:flex;gap:2px;margin-top:2px">
+      <button onclick="event.stopPropagation();openEditSession('${s.id}')" style="font-size:9px;padding:1px 4px;border:none;border-radius:3px;cursor:pointer;background:rgba(255,255,255,0.7);color:#333"><i class="ti ti-edit" style="font-size:9px"></i></button>
+      <button onclick="event.stopPropagation();deleteSession('${s.id}')" style="font-size:9px;padding:1px 4px;border:none;border-radius:3px;cursor:pointer;background:rgba(220,38,38,0.15);color:#991b1b"><i class="ti ti-trash" style="font-size:9px"></i></button>
+    </div>
   </div>`;
 }
 
@@ -779,25 +830,35 @@ function openQA(e, date, hour) {
 
 function closeQA() { document.getElementById('qa-popup').classList.remove('open'); }
 
-function filterQA() {
+function filterQA(selectedId) {
+  const sel = selectedId !== undefined ? selectedId : qaSelectedHost;
   const q = document.getElementById('qa-search').value.toLowerCase();
   const list = document.getElementById('qa-list');
   const filtered = hosts.filter(h=>h.name.toLowerCase().includes(q));
-  list.innerHTML = filtered.map(h=>`
-    <div class="qa-item" onclick="selectQAHost('${h.id}')">
+  list.innerHTML = filtered.map(h=>{
+    const isSelected = h.id === sel;
+    return `<div class="qa-item" onclick="selectQAHost('${h.id}')" style="background:${isSelected?'var(--abg)':''};">
       <span class="qa-type badge ${h.type==='fulltime'?'b-blue':'b-red'}" style="font-size:9px">${h.type==='fulltime'?'FT':'FL'}</span>
-      <span>${h.name}</span>
-      <span style="margin-left:auto;font-size:10px;color:var(--t3)">${h.rate_per_hour?fmtRp(h.rate_per_hour):'-'}</span>
-    </div>`).join('') || '<div style="font-size:12px;color:var(--t3);padding:6px">Tidak ditemukan</div>';
+      <span style="font-weight:${isSelected?'600':'400'}">${h.name}</span>
+      ${isSelected?'<i class="ti ti-check" style="margin-left:auto;color:var(--accent);font-size:12px"></i>':'<span style="margin-left:auto;font-size:10px;color:var(--t3)">'+(h.rate_per_hour?fmtRp(h.rate_per_hour):'-')+'</span>'}
+    </div>`;
+  }).join('') || '<div style="font-size:12px;color:var(--t3);padding:6px">Tidak ditemukan</div>';
 }
 
 let qaSelectedHost = null;
 function selectQAHost(hid) {
   qaSelectedHost = hid;
   const h = hosts.find(x=>x.id===hid);
-  document.getElementById('qa-list').querySelectorAll('.qa-item').forEach(el=>el.style.background='');
-  // highlight
-  document.getElementById('qa-rate').placeholder = h?.rate_per_hour ? fmtRp(h.rate_per_hour)+'/jam' : 'Default';
+  // Clear all highlight then mark selected
+  document.getElementById('qa-list').querySelectorAll('.qa-item').forEach(el=>{
+    el.style.background=''; el.style.fontWeight='';
+  });
+  const chosen = [...document.getElementById('qa-list').querySelectorAll('.qa-item')]
+    .find(el=>el.onclick?.toString().includes(hid));
+  // Re-render list with checkmark
+  filterQA(hid);
+  document.getElementById('qa-rate').value = '';
+  document.getElementById('qa-rate').placeholder = h?.rate_per_hour ? 'Default: Rp'+Number(h.rate_per_hour).toLocaleString('id')+'/jam' : 'Tidak ada default';
   checkQAConflict(hid);
 }
 
@@ -1136,16 +1197,54 @@ async function saveSession() {
     has_jumping:!!document.querySelector('#sess-warns .w-warn'),
     status:'scheduled', created_by:'owner'
   };
+  const editId = document.getElementById('modal-session').dataset.editId;
   try {
-    const {data,error}=await sb.from('sessions').insert([row]).select();
-    if(error) throw error;
-    sessions.push(data[0]); showToast('Sesi disimpan!');
-  } catch(e) { sessions.push({...row,id:'demo-'+Date.now()}); showToast('Sesi disimpan (demo mode)'); }
+    if(editId) {
+      const {error}=await sb.from('sessions').update(row).eq('id',editId);
+      if(error) throw error;
+      const idx=sessions.findIndex(s=>s.id===editId);
+      if(idx>=0) sessions[idx]={...sessions[idx],...row};
+      showToast('Sesi diperbarui!');
+    } else {
+      const {data,error}=await sb.from('sessions').insert([row]).select();
+      if(error) throw error;
+      sessions.push(data[0]); showToast('Sesi disimpan!');
+    }
+  } catch(e) {
+    if(editId){const idx=sessions.findIndex(s=>s.id===editId);if(idx>=0)sessions[idx]={...sessions[idx],...row};}
+    else sessions.push({...row,id:'demo-'+Date.now()});
+    showToast('Disimpan (demo mode)');
+  }
+  document.getElementById('modal-session').dataset.editId='';
+  document.querySelector('#modal-session .modal-t').innerHTML='<i class="ti ti-calendar-plus"></i>Tambah sesi live';
   closeModal('session'); selHosts=[]; document.getElementById('f-htags').innerHTML='';
   document.getElementById('sess-warns').innerHTML=''; renderSched();
 }
 
-function editSession(id) { showToast('Edit sesi: segera hadir'); }
+function openEditSession(sid) {
+  const s = sessions.find(x=>x.id===sid); if(!s) return;
+  // fill form
+  setVal('f-brand', s.brand_id||''); onBrandChange();
+  setVal('f-acc', s.account_id||'');
+  setVal('f-date', s.session_date||'');
+  setVal('f-start', s.start_time||'');
+  setVal('f-dur', s.duration_hours||6);
+  setVal('f-gmv', s.target_gmv||'');
+  setVal('f-note', s.notes||'');
+  setVal('f-rate','');
+  selHosts = (s.host_ids||[]).map(id=>hosts.find(h=>h.id===id)).filter(Boolean);
+  renderHostTags();
+  // mark as edit mode
+  document.getElementById('modal-session').dataset.editId = sid;
+  document.querySelector('#modal-session .modal-t').innerHTML = '<i class="ti ti-edit"></i>Edit sesi live';
+  openModal('session');
+}
+async function deleteSession(sid) {
+  if(!confirm('Hapus sesi ini?')) return;
+  try { await sb.from('sessions').delete().eq('id',sid); } catch(e){}
+  sessions = sessions.filter(s=>s.id!==sid);
+  renderSched(); showToast('Sesi dihapus');
+}
 
 // ── PAYMENT ───────────────────────────────────────────────────
 function renderPayment() {
@@ -1247,15 +1346,124 @@ async function saveLiveData() {
 }
 
 // ── AGENCY ────────────────────────────────────────────────────
+const AGENCY_DATA = [
+  {brand:"Hikmat",period:"March 2024",gmv:4000000,total_cogs:2450000,margin:400000,status:"Done"},
+  {brand:"Natur-E",period:"Ramadan 2024",gmv:51405000,total_cogs:37502000,margin:13903000,status:"Done"},
+  {brand:"Sebamed",period:"March 2024",gmv:3300000,total_cogs:2700000,margin:600000,status:"Done"},
+  {brand:"Instax",period:"28 Mar & 4 Apr 2024",gmv:1200000,total_cogs:850000,margin:350000,status:"Done"},
+  {brand:"Natur-E",period:"Lebaran 2024",gmv:9000000,total_cogs:8000000,margin:1000000,status:"Done"},
+  {brand:"Natur-E",period:"16 Apr - 15 May 2024",gmv:27600000,total_cogs:22250000,margin:5350000,status:"Done"},
+  {brand:"Natur-E",period:"16 May - 14 Jun 2024",gmv:27600000,total_cogs:21565000,margin:6035000,status:"Done"},
+  {brand:"Instax",period:"22 & 31 May 2024",gmv:1200000,total_cogs:900000,margin:300000,status:"Done"},
+  {brand:"Natur-E",period:"15 Jun - 14 Jul 2024",gmv:27830000,total_cogs:25782500,margin:2047500,status:"Done"},
+  {brand:"Natur-E Skincare",period:"21 Jun - 14 Jul 2024",gmv:5520000,total_cogs:0,margin:5520000,status:"Done"},
+  {brand:"Natur-E",period:"15 Jul - 13 Aug 2024",gmv:32775000,total_cogs:29760000,margin:3015000,status:"Done"},
+  {brand:"Natur-E Skincare",period:"15 Jul - 13 Aug 2024",gmv:6900000,total_cogs:0,margin:6900000,status:"Done"},
+  {brand:"Natur-E",period:"13 Aug - 12 Sep 2024",gmv:31280000,total_cogs:28850000,margin:2430000,status:"Done"},
+  {brand:"Natur-E Skincare",period:"13 Aug - 12 Sep 2024",gmv:6900000,total_cogs:0,margin:6900000,status:"Done"},
+  {brand:"Natur-E",period:"13 Sep - 12 Oct 2024",gmv:40480000,total_cogs:36525000,margin:3955000,status:"Done"},
+  {brand:"Natur-E Skincare",period:"13 Sep - 12 Oct 2024",gmv:6900000,total_cogs:0,margin:6900000,status:"Done"},
+  {brand:"Natur-E",period:"13 Oct - 11 Nov 2024",gmv:61120000,total_cogs:63400000,margin:-2280000,status:"Done"},
+  {brand:"Natur-E Skincare",period:"13 Oct - 11 Nov 2024",gmv:8300000,total_cogs:0,margin:8300000,status:"Done"},
+  {brand:"Natur-E",period:"12 Nov - 11 Dec 2024",gmv:72000000,total_cogs:64286800,margin:7713200,status:"Done"},
+  {brand:"Natur-E Skincare",period:"12 Nov - 11 Dec 2024",gmv:12000000,total_cogs:0,margin:12000000,status:"Done"},
+  {brand:"Herbablend",period:"28 Nov - 11 Dec 2024",gmv:2800000,total_cogs:2520000,margin:280000,status:"Done"},
+  {brand:"Natur-E",period:"12 - 31 Dec 2024",gmv:48000000,total_cogs:69350000,margin:-21350000,status:"Done"},
+  {brand:"Natur-E Skincare",period:"12 - 31 Dec 2024",gmv:8000000,total_cogs:0,margin:8000000,status:"Done"},
+  {brand:"Herbablend",period:"12 - 31 Dec 2024",gmv:4000000,total_cogs:5400000,margin:-1400000,status:"Done"},
+  {brand:"Natur-E",period:"Jan 2025",gmv:76200000,total_cogs:64100000,margin:12100000,status:"Done"},
+  {brand:"Natur-E Skincare",period:"Jan 2025",gmv:7600000,total_cogs:0,margin:7600000,status:"Done"},
+  {brand:"Herbablend",period:"Jan 2025",gmv:15150000,total_cogs:4950000,margin:10200000,status:"Done"},
+  {brand:"Natur-E",period:"Feb 2025",gmv:68400000,total_cogs:78920000,margin:-10520000,status:"Done"},
+  {brand:"Herbablend",period:"Feb 2025",gmv:13600000,total_cogs:2400000,margin:11200000,status:"Done"},
+  {brand:"Natur-E",period:"Mar 2025",gmv:75680000,total_cogs:69128000,margin:6552000,status:"Done"},
+  {brand:"Herbablend",period:"Mar 2025",gmv:18930000,total_cogs:3600000,margin:15330000,status:"Done"},
+  {brand:"Natur-E",period:"Apr 2025",gmv:70885000,total_cogs:78710000,margin:-7825000,status:"Done"},
+  {brand:"Herbablend",period:"Apr 2025",gmv:32000000,total_cogs:7125000,margin:24875000,status:"Done"},
+  {brand:"Natur-E",period:"May 2025",gmv:89100000,total_cogs:98325000,margin:-9225000,status:"Done"},
+  {brand:"Herbablend",period:"May 2025",gmv:60600000,total_cogs:0,margin:60600000,status:"Done"},
+  {brand:"Natur-E",period:"Jun 2025",gmv:137400000,total_cogs:96426000,margin:40974000,status:"Done"},
+  {brand:"Natur-E",period:"Jul 2025",gmv:130500000,total_cogs:80350000,margin:50150000,status:"Done"},
+  {brand:"Herbablend",period:"Jul 2025",gmv:4200000,total_cogs:5250000,margin:-1050000,status:"Done"},
+  {brand:"Natur-E",period:"Aug 2025",gmv:129300000,total_cogs:25431900,margin:103868100,status:"Done"},
+  {brand:"Herbablend",period:"Aug 2025",gmv:11700000,total_cogs:1500000,margin:10200000,status:"Done"},
+  {brand:"Natur-E",period:"Sep 2025",gmv:122800000,total_cogs:87591000,margin:35209000,status:"Done"},
+  {brand:"Herbablend",period:"Sep 2025",gmv:33900000,total_cogs:18000000,margin:15900000,status:"Done"},
+  {brand:"Natur-E",period:"Oct 2025",gmv:132150000,total_cogs:84804600,margin:47345400,status:"Done"},
+  {brand:"Herbablend",period:"Oct 2025",gmv:12400000,total_cogs:11575000,margin:825000,status:"Done"},
+  {brand:"Natur-E Colla",period:"Oct 2025",gmv:14750000,total_cogs:5400000,margin:9350000,status:"Done"},
+  {brand:"Natur-E",period:"Nov 2025",gmv:126000000,total_cogs:81250000,margin:44750000,status:"Done"},
+  {brand:"Herbablend",period:"Nov 2025",gmv:10200000,total_cogs:5400000,margin:4800000,status:"Done"},
+  {brand:"Natur-E Colla",period:"Nov 2025",gmv:9000000,total_cogs:10350000,margin:-1350000,status:"Done"},
+  {brand:"Natur-E",period:"Dec 2025",gmv:129000000,total_cogs:103400000,margin:25600000,status:"Done"},
+  {brand:"Herbablend",period:"Dec 2025",gmv:5300000,total_cogs:2850000,margin:2450000,status:"Done"},
+  {brand:"Natur-E Colla",period:"Dec 2025",gmv:15200000,total_cogs:11400000,margin:3800000,status:"Done"},
+  {brand:"Natur-E",period:"Jan 2026",gmv:130200000,total_cogs:91277300,margin:38922700,status:"Done"},
+  {brand:"Cerebrofort",period:"Jan 2026",gmv:24800000,total_cogs:11791000,margin:13009000,status:"Done"},
+  {brand:"Natur-E Colla",period:"Jan 2026",gmv:15500000,total_cogs:7875000,margin:7625000,status:"Done"},
+  {brand:"Natur-E Skincare",period:"Jan 2026",gmv:1200000,total_cogs:3825000,margin:-2625000,status:"Done"},
+  {brand:"Natur-E",period:"Feb 2026",gmv:101250000,total_cogs:82691000,margin:18559000,status:"Done"},
+  {brand:"Cerebrofort",period:"Feb 2026",gmv:30800000,total_cogs:15925000,margin:14875000,status:"Done"},
+  {brand:"Natur-E Colla",period:"Feb 2026",gmv:8100000,total_cogs:4825000,margin:3275000,status:"Done"},
+  {brand:"Natur-E Skincare",period:"Feb 2026",gmv:600000,total_cogs:450000,margin:150000,status:"Done"},
+  {brand:"Natur-E",period:"Mar 2026",gmv:144000000,total_cogs:159900000,margin:-15900000,status:"Done"},
+  {brand:"Cerebrofort",period:"Mar 2026",gmv:39900000,total_cogs:22575000,margin:17325000,status:"Done"},
+  {brand:"Natur-E Colla",period:"Mar 2026",gmv:16500000,total_cogs:9250000,margin:7250000,status:"Done"},
+  {brand:"Natur-E",period:"Apr 2026",gmv:65300000,total_cogs:70187900,margin:-4887900,status:"Done"},
+  {brand:"Cerebrofort",period:"Apr 2026",gmv:22800000,total_cogs:13650000,margin:9150000,status:"Done"},
+  {brand:"Natur-E Colla",period:"Apr 2026",gmv:18300000,total_cogs:9000000,margin:9300000,status:"Done"},
+  {brand:"Veluna",period:"Apr 2026",gmv:8800000,total_cogs:27735000,margin:-18935000,status:"Not Yet"},
+];
+
+let agFilter = 'all';
+let agSearch = '';
+
 function renderAgency() {
-  document.getElementById('ag-gmv').textContent='Rp 80,8jt';
-  document.getElementById('ag-cogs').textContent='Rp 12jt';
-  document.getElementById('ag-gp').textContent='Rp 68jt';
-  document.getElementById('ag-pct').textContent='84%';
-  document.getElementById('ag-table').innerHTML=`
-    <thead><tr><th>Brand</th><th>Periode</th><th>Jam</th><th>GMV</th><th>COGS Host</th><th>GP</th><th>GP%</th></tr></thead>
-    <tbody><tr><td><b>Natur-E</b></td><td>Mei 2026</td><td>605j</td><td>Rp 62jt</td><td>Rp 8jt</td><td style="color:var(--green)">Rp 54jt</td><td>87%</td></tr>
-    <tr><td><b>Natur-E Colla</b></td><td>Mei 2026</td><td>183j</td><td>Rp 18,7jt</td><td>Rp 3jt</td><td style="color:var(--green)">Rp 15,7jt</td><td>84%</td></tr></tbody>`;
+  const totalGmv = AGENCY_DATA.reduce((a,p)=>a+p.gmv,0);
+  const totalCogs = AGENCY_DATA.reduce((a,p)=>a+p.total_cogs,0);
+  const totalGp = AGENCY_DATA.reduce((a,p)=>a+p.margin,0);
+  document.getElementById('ag-gmv').textContent = fmtRp(totalGmv);
+  document.getElementById('ag-cogs').textContent = fmtRp(totalCogs);
+  document.getElementById('ag-gp').textContent = fmtRp(totalGp);
+  document.getElementById('ag-pct').textContent = (totalGp/totalGmv*100).toFixed(1)+'%';
+
+  const filtered = AGENCY_DATA.filter(p=>{
+    if(agFilter!=='all' && p.brand!==agFilter) return false;
+    if(agSearch && !p.brand.toLowerCase().includes(agSearch) && !p.period.toLowerCase().includes(agSearch)) return false;
+    return true;
+  });
+
+  const totGmv=filtered.reduce((a,p)=>a+p.gmv,0);
+  const totCogs=filtered.reduce((a,p)=>a+p.total_cogs,0);
+  const totGp=filtered.reduce((a,p)=>a+p.margin,0);
+
+  let html=`<thead><tr>
+    <th>#</th><th>Brand</th><th>Periode</th><th>GMV</th><th>Total COGS</th>
+    <th>Gross Profit</th><th>GP%</th><th>Status</th>
+  </tr></thead><tbody>`;
+  filtered.forEach((p,i)=>{
+    const gp_pct = p.gmv>0?(p.margin/p.gmv*100).toFixed(1):0;
+    const gpColor = p.margin<0?'var(--red)':p.margin/p.gmv<0.1?'var(--amber)':'var(--green)';
+    html+=`<tr>
+      <td style="color:var(--t3);font-size:11px">${i+1}</td>
+      <td><b>${p.brand}</b></td>
+      <td style="color:var(--t2);font-size:12px">${p.period}</td>
+      <td>Rp ${p.gmv.toLocaleString('id')}</td>
+      <td style="color:var(--t2)">Rp ${p.total_cogs.toLocaleString('id')}</td>
+      <td style="color:${gpColor};font-weight:600">Rp ${p.margin.toLocaleString('id')}</td>
+      <td style="color:${gpColor};font-weight:500">${gp_pct}%</td>
+      <td><span class="badge ${p.status==='Done'?'b-green':'b-amber'}">${p.status}</span></td>
+    </tr>`;
+  });
+  html+=`<tr class="sum-row">
+    <td colspan="3"><b>Total (${filtered.length} project)</b></td>
+    <td><b>Rp ${totGmv.toLocaleString('id')}</b></td>
+    <td><b>Rp ${totCogs.toLocaleString('id')}</b></td>
+    <td style="color:${totGp>=0?'var(--green)':'var(--red)'}"><b>Rp ${totGp.toLocaleString('id')}</b></td>
+    <td style="color:${totGp>=0?'var(--green)':'var(--red)'}"><b>${totGmv>0?(totGp/totGmv*100).toFixed(1):0}%</b></td>
+    <td></td>
+  </tr></tbody>`;
+  document.getElementById('ag-table').innerHTML=html;
 }
 
 // ── INVOICE ───────────────────────────────────────────────────
