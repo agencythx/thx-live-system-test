@@ -922,7 +922,8 @@ async function confirmQA() {
     host_ids: [qaSelectedHost],
     has_conflict: hasConflict, has_jumping: hasJumping,
     status:'scheduled', created_by:'owner',
-    notes: rateOverride ? `rate_override:${rate}` : ''
+    notes: '',
+    conflict_notes: rateOverride ? JSON.stringify({rate_override: rate}) : null
   };
 
   try {
@@ -1223,14 +1224,17 @@ async function saveSession() {
   const brandId=getVal('f-brand'), date=getVal('f-date'), start=getVal('f-start'), dur=parseFloat(getVal('f-dur'))||0;
   if(!date||!start||!dur||!selHosts.length){showToast('Lengkapi tanggal, jam, durasi, dan minimal 1 host','err');return;}
   const acc = accounts.find(a=>a.id===getVal('f-acc'));
-  const rateOverride = getVal('f-rate');
+  const rateOverride = parseFloat(getVal('f-rate'))||0;
+  const userNote = getVal('f-note');
   const row = {
     brand_id:brandId||null, account_id:getVal('f-acc')||null,
     platform: acc?.platform||(brands.find(b=>b.id===brandId)?.platforms?.[0])||'TikTok',
     session_date:date, start_time:start, duration_hours:dur,
     host_ids:selHosts.map(h=>h.id),
     target_gmv:getVal('f-gmv')?parseFloat(getVal('f-gmv')):null,
-    notes:(rateOverride?`rate_override:${rateOverride} | `:'')+getVal('f-note'),
+    notes: userNote,
+    // Store rate override separately in conflict_notes field as JSON (reused field)
+    conflict_notes: rateOverride ? JSON.stringify({rate_override: rateOverride}) : null,
     has_conflict:!!document.querySelector('#sess-warns .w-err'),
     has_jumping:!!document.querySelector('#sess-warns .w-warn'),
     status:'scheduled', created_by:'owner'
@@ -1261,18 +1265,30 @@ async function saveSession() {
 
 function openEditSession(sid) {
   const s = sessions.find(x=>x.id===sid); if(!s) return;
-  // fill form
+  // Parse rate override from conflict_notes JSON
+  let rateOverride = '';
+  try {
+    if(s.conflict_notes) {
+      const cn = JSON.parse(s.conflict_notes);
+      if(cn.rate_override) rateOverride = cn.rate_override;
+    }
+  } catch(e) {
+    // Legacy: check old notes format
+    const m = (s.notes||'').match(/rate_override:(\d+)/);
+    if(m) rateOverride = m[1];
+  }
   setVal('f-brand', s.brand_id||''); onBrandChange();
-  setVal('f-acc', s.account_id||'');
+  setTimeout(()=>setVal('f-acc', s.account_id||''), 50);
   setVal('f-date', s.session_date||'');
   setVal('f-start', s.start_time||'');
   setVal('f-dur', s.duration_hours||6);
   setVal('f-gmv', s.target_gmv||'');
-  setVal('f-note', s.notes||'');
-  setVal('f-rate','');
+  // Strip legacy rate_override from notes display
+  const cleanNote = (s.notes||'').replace(/rate_override:\d+\s*\|?\s*/,'').trim();
+  setVal('f-note', cleanNote);
+  setVal('f-rate', rateOverride);
   selHosts = (s.host_ids||[]).map(id=>hosts.find(h=>h.id===id)).filter(Boolean);
   renderHostTags();
-  // mark as edit mode
   document.getElementById('modal-session').dataset.editId = sid;
   document.querySelector('#modal-session .modal-t').innerHTML = '<i class="ti ti-edit"></i>Edit sesi live';
   openModal('session');
@@ -1292,19 +1308,32 @@ function renderPayment() {
   mSess.forEach(s=>{
     (s.host_ids||[]).forEach(hid=>{
       const h=hosts.find(x=>x.id===hid); if(!h) return;
-      // Determine rate: check notes for override first
+
+      // 1. Get rate: priority = session rate_override > host default rate
       let rate = h.rate_per_hour||0;
-      if(s.notes?.includes('rate_override:')) {
-        const rm=s.notes.match(/rate_override:(\d+)/); if(rm) rate=parseInt(rm[1]);
+      try {
+        if(s.conflict_notes) {
+          const cn = JSON.parse(s.conflict_notes);
+          if(cn.rate_override) rate = cn.rate_override;
+        }
+      } catch(e) {}
+      // Legacy notes fallback
+      if(!rate && s.notes?.includes('rate_override:')) {
+        const rm = s.notes.match(/rate_override:(\d+)/);
+        if(rm) rate = parseInt(rm[1]);
       }
-      // FT host working on a brand where they are NOT the primary FT = treated as freelance
-      // We check if session notes include 'freelance' flag OR if brand is not their primary brand
-      const isNatureE = brands.find(b=>b.id===s.brand_id)?.name?.toLowerCase().includes('natur-e');
-      const workType = (h.type==='fulltime' && isNatureE && !s.notes?.includes('freelance')) ? 'fulltime' : 'freelance';
-      if(workType==='fulltime' && h.rate_per_hour===0) return; // skip pure fulltime salary with no rate
-      if(!byHost[hid]) byHost[hid]={name:h.name,jam:0,sessions:0,totalFee:0};
+
+      // 2. Determine if this session counts as freelance payment:
+      //    - If host is freelance → always count
+      //    - If host is fulltime BUT has a rate override → count as freelance (they're doing extra work)
+      //    - If host is fulltime with NO rate override AND rate from master is 0 → skip (pure salary)
+      const hasRateOverride = rate > 0;
+      if(h.type === 'fulltime' && !hasRateOverride) return; // pure fulltime, skip
+
+      if(!byHost[hid]) byHost[hid]={name:h.name,jam:0,sessions:0,totalFee:0,type:h.type};
       const jam = s.duration_hours||0;
-      byHost[hid].jam+=jam; byHost[hid].sessions++;
+      byHost[hid].jam+=jam;
+      byHost[hid].sessions++;
       byHost[hid].totalFee+=jam*rate;
     });
   });
@@ -1313,10 +1342,17 @@ function renderPayment() {
   let html='<thead><tr><th>Host</th><th>Sesi</th><th>Jam</th><th>Total bayar</th><th>Status</th></tr></thead><tbody>';
   entries.forEach(([id,d])=>{
     totalJam+=d.jam; totalPay+=d.totalFee;
-    html+=`<tr><td><div style="display:flex;align-items:center;gap:6px"><span class="av av-fl">${d.name.slice(0,2).toUpperCase()}</span><b>${d.name}</b></div></td>
-      <td style="color:var(--t3)">${d.sessions}</td><td><b>${d.jam}j</b></td>
+    const isFT = d.type==='fulltime';
+    html+=`<tr>
+      <td><div style="display:flex;align-items:center;gap:6px">
+        <span class="av ${isFT?'av-ft':'av-fl'}">${d.name.slice(0,2).toUpperCase()}</span>
+        <div><b>${d.name}</b>${isFT?'<span class="badge b-blue" style="font-size:9px;margin-left:4px">FT+FL</span>':''}</div>
+      </div></td>
+      <td style="color:var(--t3)">${d.sessions}</td>
+      <td><b>${d.jam}j</b></td>
       <td style="font-weight:700">Rp ${Number(d.totalFee).toLocaleString('id')}</td>
-      <td><span class="badge b-amber">Pending</span></td></tr>`;
+      <td><span class="badge b-amber">Pending</span></td>
+    </tr>`;
   });
   if(!entries.length) html+='<tr><td colspan="5" style="padding:2rem;text-align:center;color:var(--t3)">Belum ada data freelance bulan ini.</td></tr>';
   html+=`<tr class="sum-row"><td colspan="2"><b>Total</b></td><td><b>${totalJam}j</b></td><td><b>Rp ${Number(totalPay).toLocaleString('id')}</b></td><td></td></tr></tbody>`;
