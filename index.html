@@ -222,6 +222,11 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-d
       <button class="vt" onclick="switchView('month',this)">Bulanan</button>
       <button class="vt" onclick="switchView('host',this)">Per Host</button>
     </div>
+    <div class="view-tabs" style="margin-left:4px">
+      <button class="vt" onclick="setGridSize('compact',this)" title="Compact"><i class="ti ti-layout-rows" style="font-size:13px"></i></button>
+      <button class="vt on" onclick="setGridSize('normal',this)" title="Normal"><i class="ti ti-layout-grid" style="font-size:13px"></i></button>
+      <button class="vt" onclick="setGridSize('large',this)" title="Besar"><i class="ti ti-layout-columns" style="font-size:13px"></i></button>
+    </div>
     <div class="chips" id="brand-filter-chips">
       <button class="chip on" onclick="setBrandFilter(this,'all')">Semua</button>
     </div>
@@ -687,7 +692,8 @@ function renderWeek(filtered) {
   html += '</tr></thead><tbody>';
   hours.forEach(h=>{
     const hStr = String(h).padStart(2,'0')+':00';
-    html += `<tr><td class="td-t">${hStr}</td>`;
+    const hStrEnd = String((h+1)%24).padStart(2,'0')+':00';
+    html += `<tr><td class="td-t" style="font-size:9px;white-space:nowrap">${hStr}<br><span style="opacity:.5">${hStrEnd}</span></td>`;
     dates.forEach((d,di)=>{
       const ds = strs[di];
       // Only render block on start hour to avoid repeat
@@ -703,10 +709,12 @@ function renderWeek(filtered) {
       });
       let inner = startCells.map(s=>sessBlock(s)).join('');
       if(spanCells.length && !startCells.length) {
+        // Show subtle colored bar to indicate ongoing session
         inner = spanCells.map(s=>{
           const plat=s.platform||'';
           const cls=plat==='TikTok'?'sb-tk':plat==='Shopee'?'sb-sh':plat==='Tokopedia'?'sb-tp':'sb-ml';
-          return `<div class="sb ${cls}" style="opacity:.35;padding:1px 5px;font-size:9px">↕ ${(s.host_ids||[]).map(id=>hosts.find(h=>h.id===id)?.name||'?').join(',')}</div>`;
+          const hNames=(s.host_ids||[]).map(id=>hosts.find(h=>h.id===id)?.name||'?').join(', ');
+          return `<div class="sb ${cls}" style="opacity:.2;padding:1px 5px;font-size:10px;pointer-events:none;user-select:none">${hNames}</div>`;
         }).join('');
       }
       html += `<td onclick="openQA(event,'${ds}',${h})" data-date="${ds}" data-hour="${h}">${inner}</td>`;
@@ -772,7 +780,7 @@ function renderHostView(filtered) {
           html+=`<div class="sb ${cls}" style="margin-bottom:2px">
             <div class="sb-b" style="font-size:11px">${b?.name||'—'}</div>
             <div class="sb-h" style="font-size:10px;font-weight:600">${s.start_time||''} – ${getEndTime(s)} (${s.duration_hours}j)</div>
-            <div class="sb-h" style="font-size:10px">${plat}</div>
+            <div class="sb-h" style="font-size:10px;padding:1px 4px;display:inline-block;border-radius:3px;background:rgba(0,0,0,.06)">${plat}</div>
           </div>`;
         });
         if(dayHrs>0) html+=`<div style="font-size:10px;color:var(--t3);text-align:right;padding:2px 4px">Total: <b>${dayHrs}j</b></div>`;
@@ -803,12 +811,12 @@ function sessBlock(s, mini=false) {
   const warn = (s.has_conflict||s.has_jumping)?'<div class="wd"></div>':'';
   if(mini) return `<div class="sb ${cls}" title="${b?.name||''} | ${hNames} | ${s.start_time||''} ${s.duration_hours}j">${warn}<div class="sb-b">${b?.name||'—'}</div><div class="sb-h" style="font-size:9px">${hNames}</div></div>`;
   const endT = getEndTime(s);
-  const platLabel = plat==='TikTok'?'🎵 TikTok':plat==='Shopee'?'🛍 Shopee':plat==='Tokopedia'?'🟢 Tokped':plat;
+  const platBadge = `<span style="font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;background:${plat==='TikTok'?'rgba(33,150,243,.15)':plat==='Shopee'?'rgba(245,115,69,.15)':'rgba(45,164,78,.15)'};">${plat}</span>`;
   return `<div class="sb ${cls}" style="cursor:default;padding:4px 6px 3px">
     ${warn}
     <div style="font-size:12px;font-weight:700;line-height:1.2">${hNames}</div>
     <div style="font-size:10px;margin-top:1px;opacity:.85">${b?.name||'—'}</div>
-    <div style="font-size:10px;opacity:.75">${platLabel} · ${s.start_time||''}-${endT} (${s.duration_hours}j)</div>
+    <div style="font-size:10px;margin-top:1px;display:flex;align-items:center;gap:4px">${platBadge} ${s.start_time||''}-${endT} (${s.duration_hours}j)</div>
     <div style="display:flex;gap:2px;margin-top:3px">
       <button onclick="event.stopPropagation();openEditSession('${s.id}')" style="font-size:9px;padding:1px 5px;border:none;border-radius:3px;cursor:pointer;background:rgba(255,255,255,0.75);color:#444;font-family:inherit"><i class="ti ti-edit" style="font-size:9px"></i></button>
       <button onclick="event.stopPropagation();deleteSession('${s.id}')" style="font-size:9px;padding:1px 5px;border:none;border-radius:3px;cursor:pointer;background:rgba(220,38,38,0.12);color:#991b1b;font-family:inherit"><i class="ti ti-trash" style="font-size:9px"></i></button>
@@ -852,7 +860,7 @@ function filterQA(selectedId) {
   const filtered = hosts.filter(h=>h.name.toLowerCase().includes(q));
   list.innerHTML = filtered.map(h=>{
     const isSelected = h.id === sel;
-    return `<div class="qa-item" onclick="selectQAHost('${h.id}')" style="background:${isSelected?'var(--abg)':''};">
+    return `<div class="qa-item" onclick="selectQAHost('${h.id}',event)" style="background:${isSelected?'var(--abg)':''};">
       <span class="qa-type badge ${h.type==='fulltime'?'b-blue':'b-red'}" style="font-size:9px">${h.type==='fulltime'?'FT':'FL'}</span>
       <span style="font-weight:${isSelected?'600':'400'}">${h.name}</span>
       ${isSelected?'<i class="ti ti-check" style="margin-left:auto;color:var(--accent);font-size:12px"></i>':'<span style="margin-left:auto;font-size:10px;color:var(--t3)">'+(h.rate_per_hour?fmtRp(h.rate_per_hour):'-')+'</span>'}
@@ -861,16 +869,12 @@ function filterQA(selectedId) {
 }
 
 let qaSelectedHost = null;
-function selectQAHost(hid) {
+function selectQAHost(hid, e) {
+  if(e) e.stopPropagation();
+  // Toggle deselect
+  if(qaSelectedHost === hid) { qaSelectedHost = null; filterQA(null); return; }
   qaSelectedHost = hid;
   const h = hosts.find(x=>x.id===hid);
-  // Clear all highlight then mark selected
-  document.getElementById('qa-list').querySelectorAll('.qa-item').forEach(el=>{
-    el.style.background=''; el.style.fontWeight='';
-  });
-  const chosen = [...document.getElementById('qa-list').querySelectorAll('.qa-item')]
-    .find(el=>el.onclick?.toString().includes(hid));
-  // Re-render list with checkmark
   filterQA(hid);
   document.getElementById('qa-rate').value = '';
   document.getElementById('qa-rate').placeholder = h?.rate_per_hour ? 'Default: Rp'+Number(h.rate_per_hour).toLocaleString('id')+'/jam' : 'Tidak ada default';
@@ -934,12 +938,31 @@ async function confirmQA() {
   renderSched();
 }
 
-// Close popup when clicking outside
+// Close popup when clicking outside (not on host list items)
 document.addEventListener('click', e=>{
-  if(!e.target.closest('#qa-popup')&&!e.target.closest('.sg td')&&!e.target.closest('.cal-day')) closeQA();
+  if(!e.target.closest('#qa-popup')&&!e.target.closest('.sg td')&&!e.target.closest('.cal-day')&&!e.target.closest('.hs-table td')) closeQA();
 });
 
 // ── VIEW SWITCHING ────────────────────────────────────────────
+let gridSize = 'normal';
+function setGridSize(size, el) {
+  gridSize = size;
+  document.querySelectorAll('.view-tabs:nth-child(2) .vt').forEach(x=>x.classList.remove('on'));
+  el.classList.add('on');
+  const grid = document.getElementById('week-grid');
+  if(!grid) return;
+  const rows = grid.querySelectorAll('tbody tr');
+  rows.forEach(row=>{
+    row.style.height = size==='compact'?'28px':size==='large'?'64px':'42px';
+  });
+  const sbs = grid.querySelectorAll('.sb');
+  sbs.forEach(sb=>{
+    sb.style.fontSize = size==='compact'?'10px':size==='large'?'13px':'11px';
+  });
+  const wrap = document.querySelector('.sched-wrap');
+  if(wrap) wrap.style.maxHeight = size==='compact'?'calc(100vh - 240px)':size==='large'?'calc(100vh - 240px)':'calc(100vh - 280px)';
+}
+
 function switchView(v, el) {
   schedView = v;
   document.querySelectorAll('.vt').forEach(x=>x.classList.remove('on'));
@@ -1269,13 +1292,16 @@ function renderPayment() {
   mSess.forEach(s=>{
     (s.host_ids||[]).forEach(hid=>{
       const h=hosts.find(x=>x.id===hid); if(!h) return;
-      // Determine rate: check notes for override
+      // Determine rate: check notes for override first
       let rate = h.rate_per_hour||0;
       if(s.notes?.includes('rate_override:')) {
-        const m=s.notes.match(/rate_override:(\d+)/); if(m) rate=parseInt(m[1]);
+        const rm=s.notes.match(/rate_override:(\d+)/); if(rm) rate=parseInt(rm[1]);
       }
-      const workType = h.type==='fulltime'&&s.brand_id&&brands.find(b=>b.id===s.brand_id)?.name?.includes('Natur-E')?'fulltime':'freelance';
-      if(workType==='fulltime') return; // skip fulltime salary
+      // FT host working on a brand where they are NOT the primary FT = treated as freelance
+      // We check if session notes include 'freelance' flag OR if brand is not their primary brand
+      const isNatureE = brands.find(b=>b.id===s.brand_id)?.name?.toLowerCase().includes('natur-e');
+      const workType = (h.type==='fulltime' && isNatureE && !s.notes?.includes('freelance')) ? 'fulltime' : 'freelance';
+      if(workType==='fulltime' && h.rate_per_hour===0) return; // skip pure fulltime salary with no rate
       if(!byHost[hid]) byHost[hid]={name:h.name,jam:0,sessions:0,totalFee:0};
       const jam = s.duration_hours||0;
       byHost[hid].jam+=jam; byHost[hid].sessions++;
