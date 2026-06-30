@@ -1956,11 +1956,7 @@ function deleteAgencyProject() {
   renderAgency();
   showToast('Project dihapus');
 }
-function togglePayDetail(id) {
-  const el = document.getElementById(id);
-  if(!el) return;
-  el.style.display = el.style.display==='none' ? 'table-row' : 'none';
-}
+
 function editPayRate(sessId, hostId, currentRate) {
   const newRate = prompt(`Edit rate untuk sesi ini (sekarang: Rp ${Number(currentRate).toLocaleString('id')}):`, currentRate);
   if(newRate===null) return;
