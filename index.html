@@ -311,10 +311,24 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-d
     <div class="stat"><div class="stat-l">Host dibayar</div><div class="stat-v" id="p-cnt">—</div></div>
     <div class="stat"><div class="stat-l">Status</div><div class="stat-v" id="p-st" style="font-size:13px">—</div></div>
   </div>
-  <div style="display:flex;gap:8px;margin-bottom:.9rem">
+  <div style="display:flex;gap:8px;margin-bottom:.9rem;flex-wrap:wrap;align-items:center">
+    <div class="view-tabs">
+      <button class="vt" onclick="setPayPeriod('day',this)">Harian</button>
+      <button class="vt" onclick="setPayPeriod('week',this)">Mingguan</button>
+      <button class="vt on" onclick="setPayPeriod('month',this)">Bulanan</button>
+    </div>
+    <input type="date" id="pay-date" value="" onchange="renderPayment()" style="font-size:12px;padding:5px 9px;border:.5px solid var(--border2);border-radius:var(--r);background:var(--surface);display:none">
     <select id="pay-month" onchange="renderPayment()" style="font-size:12px;padding:5px 9px;border:.5px solid var(--border2);border-radius:var(--r);background:var(--surface)">
-      <option value="2026-07">Juli 2026</option><option value="2026-06">Juni 2026</option><option value="2026-05">Mei 2026</option>
+      <option value="2026-07">Juli 2026</option><option value="2026-06">Juni 2026</option>
+      <option value="2026-05">Mei 2026</option><option value="2026-04">April 2026</option>
+      <option value="2026-03">Maret 2026</option><option value="2026-02">Februari 2026</option>
+      <option value="2026-01">Januari 2026</option>
     </select>
+    <div id="pay-week-nav" style="display:none;align-items:center;gap:5px">
+      <button class="btn btn-s btn-xs" onclick="changePayWeek(-1)"><i class="ti ti-chevron-left"></i></button>
+      <span id="pay-week-label" style="font-size:12px;font-weight:500;min-width:130px;text-align:center">—</span>
+      <button class="btn btn-s btn-xs" onclick="changePayWeek(1)"><i class="ti ti-chevron-right"></i></button>
+    </div>
     <button class="btn btn-s" style="margin-left:auto"><i class="ti ti-download"></i>Export</button>
   </div>
   <div class="card"><div class="ch"><h4><i class="ti ti-receipt"></i>Detail payment freelance</h4></div><div style="overflow-x:auto"><table class="dt" id="pay-table"></table></div></div>
@@ -338,7 +352,7 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-d
     </select>
     <input type="text" placeholder="Cari brand / periode..." oninput="agSearch=this.value.toLowerCase();renderAgency()" style="font-size:12px;padding:5px 9px;border:.5px solid var(--border2);border-radius:var(--r);background:var(--surface);width:200px">
   </div>
-  <div class="card"><div class="ch"><h4><i class="ti ti-table"></i>Semua project — 66 records dari CSV</h4><button class="btn btn-p btn-xs" onclick="showToast('Segera: tambah project baru')"><i class="ti ti-plus"></i>Tambah</button></div>
+  <div class="card"><div class="ch"><h4><i class="ti ti-table"></i>Semua project — 66 records dari CSV</h4><button class="btn btn-p btn-xs" onclick="openAddAgProject()"><i class="ti ti-plus"></i>Tambah Project</button></div>
   <div style="overflow-x:auto;max-height:500px"><table class="dt" id="ag-table"></table></div></div>
 </div>
 
@@ -486,6 +500,84 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-d
   <div class="modal-f">
     <button class="btn btn-s" style="flex:1" onclick="closeModal('livedata')">Batal</button>
     <button class="btn btn-p" style="flex:2" onclick="saveLiveData()"><i class="ti ti-check"></i>Simpan</button>
+  </div>
+</div>
+</div>
+
+<!-- AGENCY PROJECT MODAL -->
+<div class="ov" id="modal-agency">
+<div class="modal" style="width:560px">
+  <div class="modal-t" id="ag-modal-t"><i class="ti ti-calculator"></i>Tambah project</div>
+  <input type="hidden" id="agm-idx">
+  <div class="fg-row">
+    <div class="fg"><div class="fl">Brand</div>
+      <select id="agm-brand">
+        <option value="">Pilih brand / ketik manual...</option>
+        <option>Natur-E</option><option>Natur-E Colla</option><option>Natur-E Skincare</option>
+        <option>Cerebrofort</option><option>Herbablend</option><option>Veluna</option>
+        <option>Lainnya</option>
+      </select>
+    </div>
+    <div class="fg"><div class="fl">Brand (manual jika tidak ada)</div><input type="text" id="agm-brand-manual" placeholder="Contoh: Hikmat"></div>
+  </div>
+  <div class="fg"><div class="fl">Periode</div><input type="text" id="agm-period" placeholder="Contoh: Mei 2026 atau 1-31 Mei 2026"></div>
+  <div class="fg-row">
+    <div class="fg"><div class="fl">GMV (Rp)</div><input type="number" id="agm-gmv" placeholder="0" oninput="calcAgModal()"></div>
+    <div class="fg"><div class="fl">Status</div>
+      <select id="agm-status"><option value="Done">Done</option><option value="Not Yet">Not Yet</option><option value="On Going">On Going</option></select>
+    </div>
+  </div>
+  <div style="font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;margin-top:4px">Detail COGS</div>
+  <div id="agm-cogs-lines" style="max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:4px"></div>
+  <button class="btn btn-s btn-xs" onclick="addAgCOGSLine()" style="margin-top:6px"><i class="ti ti-plus"></i>Tambah baris COGS</button>
+  <div style="margin-top:10px;padding:8px 12px;background:var(--s2);border-radius:var(--r);display:flex;justify-content:space-between;font-size:13px">
+    <span>Total COGS</span><b id="agm-total-cogs">Rp 0</b>
+  </div>
+  <div style="margin-top:4px;padding:8px 12px;border-radius:var(--r);display:flex;justify-content:space-between;font-size:13px" id="agm-gp-bar">
+    <span>Gross Profit</span><b id="agm-gp-val">Rp 0</b>
+  </div>
+  <div class="modal-f">
+    <button class="btn btn-s" style="flex:1" onclick="closeModal('agency')">Batal</button>
+    <button class="btn btn-d btn-xs" id="agm-del-btn" onclick="deleteAgProject()" style="display:none"><i class="ti ti-trash"></i></button>
+    <button class="btn btn-p" style="flex:2" onclick="saveAgProject()"><i class="ti ti-check"></i>Simpan</button>
+  </div>
+</div>
+</div>
+
+<!-- AGENCY PROJECT MODAL -->
+<div class="ov" id="modal-agency">
+<div class="modal">
+  <div class="modal-t" id="agency-modal-t"><i class="ti ti-calculator"></i>Tambah project</div>
+  <input type="hidden" id="am-idx">
+  <div class="fg-row">
+    <div class="fg"><div class="fl">Brand</div>
+      <select id="am-brand">
+        <option>Natur-E</option><option>Natur-E Colla</option><option>Natur-E Skincare</option>
+        <option>Cerebrofort</option><option>Herbablend</option><option>Veluna</option>
+        <option>Hikmat</option><option>Sebamed</option><option>Instax</option><option>Lainnya</option>
+      </select>
+    </div>
+    <div class="fg"><div class="fl">Periode</div><input type="text" id="am-period" placeholder="contoh: Jun 2026"></div>
+  </div>
+  <div class="fg-row">
+    <div class="fg"><div class="fl">GMV (Rp)</div><input type="number" id="am-gmv" placeholder="0"></div>
+    <div class="fg"><div class="fl">Status</div>
+      <select id="am-status"><option value="Done">Done</option><option value="Not Yet">Not Yet</option><option value="On Going">On Going</option></select>
+    </div>
+  </div>
+  <div style="font-size:11px;font-weight:600;color:var(--t3);margin:8px 0 6px;text-transform:uppercase;letter-spacing:.04em">Detail COGS</div>
+  <div id="am-cogs-lines"></div>
+  <button class="btn btn-s btn-xs" onclick="addAgencyCOGSLine()" style="margin-top:4px"><i class="ti ti-plus"></i>Tambah baris COGS</button>
+  <div id="am-cogs-total" style="margin-top:8px;padding:6px 10px;background:var(--s2);border-radius:var(--r);font-size:12px;font-weight:600;display:flex;justify-content:space-between">
+    <span>Total COGS</span><span id="am-cogs-sum">Rp 0</span>
+  </div>
+  <div id="am-gp-preview" style="margin-top:4px;padding:6px 10px;border-radius:var(--r);font-size:12px;font-weight:600;display:flex;justify-content:space-between;background:var(--gbg)">
+    <span>Gross Profit</span><span id="am-gp-val">Rp 0</span>
+  </div>
+  <div class="modal-f">
+    <button class="btn btn-s" style="flex:1" onclick="closeModal('agency')">Batal</button>
+    <button class="btn btn-d btn-xs" id="am-del-btn" onclick="deleteAgencyProject()" style="display:none"><i class="ti ti-trash"></i></button>
+    <button class="btn btn-p" style="flex:2" onclick="saveAgencyProject()"><i class="ti ti-check"></i>Simpan</button>
   </div>
 </div>
 </div>
@@ -1301,9 +1393,66 @@ async function deleteSession(sid) {
 }
 
 // ── PAYMENT ───────────────────────────────────────────────────
+let payPeriodMode = 'month';
+let payWeekOffset = 0;
+
+function setPayPeriod(mode, el) {
+  payPeriodMode = mode;
+  document.querySelectorAll('.view-tabs:has([onclick*="setPayPeriod"]) .vt').forEach(x=>x.classList.remove('on'));
+  el.classList.add('on');
+  document.getElementById('pay-month').style.display = mode==='month' ? '' : 'none';
+  document.getElementById('pay-date').style.display = mode==='day' ? '' : 'none';
+  document.getElementById('pay-week-nav').style.display = mode==='week' ? 'flex' : 'none';
+  if(mode==='day' && !getVal('pay-date')) setVal('pay-date', new Date().toISOString().split('T')[0]);
+  renderPayment();
+}
+
+function changePayWeek(d) { payWeekOffset+=d; renderPayment(); }
+
+function getPaySessions() {
+  if(payPeriodMode==='month') {
+    const month = getVal('pay-month');
+    return sessions.filter(s=>s.session_date?.startsWith(month));
+  } else if(payPeriodMode==='day') {
+    const date = getVal('pay-date');
+    return sessions.filter(s=>s.session_date===date);
+  } else {
+    // week
+    const dates = getWeekDates(payWeekOffset);
+    const strs = dates.map(fmt);
+    const label = dates[0].getDate()+'/'+(dates[0].getMonth()+1)+' – '+dates[6].getDate()+'/'+(dates[6].getMonth()+1);
+    const el = document.getElementById('pay-week-label');
+    if(el) el.textContent = label;
+    return sessions.filter(s=>strs.includes(s.session_date));
+  }
+}
+
+function togglePayDetail(id){
+  const el=document.getElementById(id); if(!el) return;
+  el.style.display=el.style.display==='none'?'table-row':'none';
+}
+
+function openEditRate(sid, hid, currentRate) {
+  const newRate = prompt(`Edit rate/jam untuk sesi ini:\nRate saat ini: Rp ${Number(currentRate).toLocaleString('id')}\n\nMasukkan rate baru (Rp):`, currentRate);
+  if(newRate===null) return;
+  const rate = parseFloat(newRate)||0;
+  // Update session conflict_notes
+  const s = sessions.find(x=>x.id===sid); if(!s) return;
+  try {
+    const cn = s.conflict_notes ? JSON.parse(s.conflict_notes) : {};
+    cn.rate_override = rate;
+    s.conflict_notes = JSON.stringify(cn);
+    sb.from('sessions').update({conflict_notes:s.conflict_notes}).eq('id',sid).then(()=>{});
+  } catch(e) { s.conflict_notes = JSON.stringify({rate_override:rate}); }
+  // Update display
+  const cell = document.getElementById(`rate-cell-${sid}-${hid}`);
+  if(cell) cell.textContent = 'Rp '+Number(rate).toLocaleString('id');
+  showToast('Rate diperbarui! Reload untuk lihat total terbaru.');
+  setTimeout(()=>renderPayment(), 300);
+}
+
 function renderPayment() {
-  const month = getVal('pay-month');
-  const mSess = sessions.filter(s=>s.session_date?.startsWith(month));
+  const mSess = getPaySessions();
   const byHost={};
   mSess.forEach(s=>{
     (s.host_ids||[]).forEach(hid=>{
@@ -1330,11 +1479,15 @@ function renderPayment() {
       const hasRateOverride = rate > 0;
       if(h.type === 'fulltime' && !hasRateOverride) return; // pure fulltime, skip
 
-      if(!byHost[hid]) byHost[hid]={name:h.name,jam:0,sessions:0,totalFee:0,type:h.type};
+      if(!byHost[hid]) byHost[hid]={name:h.name,jam:0,sessions:0,totalFee:0,type:h.type,sessDetail:[]};
       const jam = s.duration_hours||0;
       byHost[hid].jam+=jam;
       byHost[hid].sessions++;
       byHost[hid].totalFee+=jam*rate;
+      byHost[hid].sessDetail.push({
+        sessId:s.id, date:s.session_date, brand_id:s.brand_id,
+        platform:s.platform||'', start:s.start_time||'', dur:jam, rate
+      });
     });
   });
   const entries=Object.entries(byHost);
@@ -1343,7 +1496,8 @@ function renderPayment() {
   entries.forEach(([id,d])=>{
     totalJam+=d.jam; totalPay+=d.totalFee;
     const isFT = d.type==='fulltime';
-    html+=`<tr>
+    const rowId = 'pay-detail-'+id.replace(/[^a-z0-9]/gi,'');
+    html+=`<tr style="cursor:pointer" onclick="togglePayDetail('${rowId}')">
       <td><div style="display:flex;align-items:center;gap:6px">
         <span class="av ${isFT?'av-ft':'av-fl'}">${d.name.slice(0,2).toUpperCase()}</span>
         <div><b>${d.name}</b>${isFT?'<span class="badge b-blue" style="font-size:9px;margin-left:4px">FT+FL</span>':''}</div>
@@ -1351,7 +1505,44 @@ function renderPayment() {
       <td style="color:var(--t3)">${d.sessions}</td>
       <td><b>${d.jam}j</b></td>
       <td style="font-weight:700">Rp ${Number(d.totalFee).toLocaleString('id')}</td>
-      <td><span class="badge b-amber">Pending</span></td>
+      <td><span class="badge b-amber">Pending</span> <i class="ti ti-chevron-down" style="font-size:10px;color:var(--t3)"></i></td>
+    </tr>
+    <tr id="${rowId}" style="display:none;background:var(--s2)">
+      <td colspan="5" style="padding:0">
+        <table style="width:100%;border-collapse:collapse">
+          <thead><tr style="background:var(--bg)">
+            <th style="font-size:10px;color:var(--t3);padding:5px 12px 5px 32px;text-align:left;font-weight:600">Tanggal</th>
+            <th style="font-size:10px;color:var(--t3);padding:5px 8px;text-align:left;font-weight:600">Brand</th>
+            <th style="font-size:10px;color:var(--t3);padding:5px 8px;text-align:left;font-weight:600">Platform</th>
+            <th style="font-size:10px;color:var(--t3);padding:5px 8px;text-align:left;font-weight:600">Jam mulai</th>
+            <th style="font-size:10px;color:var(--t3);padding:5px 8px;text-align:right;font-weight:600">Durasi</th>
+            <th style="font-size:10px;color:var(--t3);padding:5px 8px;text-align:right;font-weight:600">Rate/jam</th>
+            <th style="font-size:10px;color:var(--t3);padding:5px 8px;text-align:right;font-weight:600">Fee</th>
+            <th style="font-size:10px;color:var(--t3);padding:5px 8px;text-align:center;font-weight:600">Edit</th>
+          </tr></thead>
+          <tbody>
+          ${d.sessDetail.map(sd=>{
+            const br=brands.find(b=>b.id===sd.brand_id);
+            const fee=sd.dur*sd.rate;
+            return `<tr style="border-top:.5px solid var(--border)">
+              <td style="font-size:12px;padding:6px 8px 6px 32px">${sd.date}</td>
+              <td style="font-size:12px;padding:6px 8px">${br?.name||'—'}</td>
+              <td style="font-size:12px;padding:6px 8px"><span style="font-size:10px;padding:1px 5px;border-radius:3px;background:rgba(0,0,0,.06)">${sd.platform}</span></td>
+              <td style="font-size:12px;padding:6px 8px">${sd.start}</td>
+              <td style="font-size:12px;padding:6px 8px;text-align:right"><b>${sd.dur}j</b></td>
+              <td style="font-size:12px;padding:6px 8px;text-align:right">Rp ${Number(sd.rate).toLocaleString('id')}</td>
+              <td style="font-size:12px;padding:6px 8px;text-align:right;font-weight:600">Rp ${Number(fee).toLocaleString('id')}</td>
+              <td style="padding:6px 8px;text-align:center">
+                <button onclick="event.stopPropagation();editPayRate('${sd.sessId}','${id}',${sd.rate})" 
+                  style="font-size:10px;padding:2px 7px;border:.5px solid var(--border2);border-radius:4px;cursor:pointer;background:none;font-family:inherit">
+                  <i class="ti ti-edit" style="font-size:10px"></i> Rate
+                </button>
+              </td>
+            </tr>`;
+          }).join('')}
+          </tbody>
+        </table>
+      </td>
     </tr>`;
   });
   if(!entries.length) html+='<tr><td colspan="5" style="padding:2rem;text-align:center;color:var(--t3)">Belum ada data freelance bulan ini.</td></tr>';
@@ -1559,10 +1750,236 @@ const AGENCY_DATA = [
 ];
 
 let agFilter = 'all';
+let agSearch = '';
+let agCogsLineN = 0;
+
+function openAddAgProject() {
+  setVal('agm-idx',''); setVal('agm-brand',''); setVal('agm-brand-manual','');
+  setVal('agm-period',''); setVal('agm-gmv',''); setVal('agm-status','Done');
+  document.getElementById('agm-cogs-lines').innerHTML='';
+  document.getElementById('agm-total-cogs').textContent='Rp 0';
+  document.getElementById('agm-gp-val').textContent='Rp 0';
+  document.getElementById('ag-modal-t').innerHTML='<i class="ti ti-calculator"></i>Tambah project';
+  document.getElementById('agm-del-btn').style.display='none';
+  agCogsLineN=0;
+  addAgCOGSLine();
+  openModal('agency');
+}
+
+function openEditAgProject(idx) {
+  const p = AGENCY_DATA[idx]; if(!p) return;
+  setVal('agm-idx', idx);
+  setVal('agm-brand', ['Natur-E','Natur-E Colla','Natur-E Skincare','Cerebrofort','Herbablend','Veluna'].includes(p.brand)?p.brand:'Lainnya');
+  setVal('agm-brand-manual', p.brand);
+  setVal('agm-period', p.period);
+  setVal('agm-gmv', p.gmv);
+  setVal('agm-status', p.status);
+  // Load COGS lines
+  const container = document.getElementById('agm-cogs-lines');
+  container.innerHTML=''; agCogsLineN=0;
+  (p.cogs_detail||[]).forEach(c=>{ addAgCOGSLine(c.label, c.amt); });
+  document.getElementById('ag-modal-t').innerHTML='<i class="ti ti-edit"></i>Edit — '+p.brand+' '+p.period;
+  document.getElementById('agm-del-btn').style.display='';
+  calcAgModal();
+  openModal('agency');
+}
+
+function addAgCOGSLine(label='', amt='') {
+  agCogsLineN++;
+  const d = document.createElement('div');
+  d.style.cssText='display:grid;grid-template-columns:1fr auto auto;gap:5px;align-items:center';
+  d.id='agcl-'+agCogsLineN;
+  d.innerHTML=`<input type="text" value="${label}" placeholder="Keterangan (mis: Host - Dila)" style="font-size:12px;padding:4px 7px;border:.5px solid var(--border2);border-radius:4px;font-family:inherit">
+    <input type="number" value="${amt}" placeholder="Jumlah" oninput="calcAgModal()" style="font-size:12px;padding:4px 7px;border:.5px solid var(--border2);border-radius:4px;width:130px;font-family:inherit">
+    <button onclick="document.getElementById('agcl-${agCogsLineN}').remove();calcAgModal()" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:14px"><i class="ti ti-x"></i></button>`;
+  document.getElementById('agm-cogs-lines').appendChild(d);
+}
+
+function calcAgModal() {
+  let totalCogs=0;
+  document.querySelectorAll('#agm-cogs-lines>div').forEach(div=>{
+    const inputs=div.querySelectorAll('input');
+    totalCogs+=parseFloat(inputs[1]?.value)||0;
+  });
+  const gmv=parseFloat(getVal('agm-gmv'))||0;
+  const gp=gmv-totalCogs;
+  document.getElementById('agm-total-cogs').textContent='Rp '+totalCogs.toLocaleString('id');
+  document.getElementById('agm-gp-val').textContent='Rp '+gp.toLocaleString('id');
+  const bar=document.getElementById('agm-gp-bar');
+  bar.style.background=gp>=0?'var(--gbg)':'var(--rbg)';
+  document.getElementById('agm-gp-val').style.color=gp>=0?'var(--green)':'var(--red)';
+}
+
+function saveAgProject() {
+  const brand = getVal('agm-brand')==='Lainnya'||!getVal('agm-brand') ? getVal('agm-brand-manual') : getVal('agm-brand');
+  const period = getVal('agm-period');
+  const gmv = parseFloat(getVal('agm-gmv'))||0;
+  const status = getVal('agm-status');
+  if(!brand||!period) { showToast('Brand dan periode wajib diisi','err'); return; }
+  const cogs_detail=[];
+  let totalCogs=0;
+  document.querySelectorAll('#agm-cogs-lines>div').forEach(div=>{
+    const inputs=div.querySelectorAll('input');
+    if(inputs[0]?.value){
+      const amt=parseFloat(inputs[1]?.value)||0;
+      cogs_detail.push({label:inputs[0].value, amt});
+      totalCogs+=amt;
+    }
+  });
+  const margin=gmv-totalCogs;
+  const entry={brand,period,gmv,total_cogs:totalCogs,margin,status,cogs_detail};
+  const idx=parseInt(getVal('agm-idx'));
+  if(!isNaN(idx)&&idx>=0&&idx<AGENCY_DATA.length) {
+    AGENCY_DATA[idx]={...AGENCY_DATA[idx],...entry};
+    showToast('Project diperbarui!');
+  } else {
+    AGENCY_DATA.push(entry);
+    showToast('Project ditambahkan!');
+  }
+  closeModal('agency');
+  renderAgency();
+}
+
+function deleteAgProject() {
+  const idx=parseInt(getVal('agm-idx'));
+  if(isNaN(idx)||idx<0) return;
+  if(!confirm('Hapus project ini?')) return;
+  AGENCY_DATA.splice(idx,1);
+  closeModal('agency'); renderAgency();
+  showToast('Project dihapus');
+}
+
 function toggleAgDetail(id) {
   const el = document.getElementById(id);
   if(!el) return;
   el.style.display = el.style.display==='none' ? 'table-row' : 'none';
+}
+
+function openAddAgency() {
+  document.getElementById('am-idx').value = '';
+  document.getElementById('am-brand').value = 'Natur-E';
+  document.getElementById('am-period').value = '';
+  document.getElementById('am-gmv').value = '';
+  document.getElementById('am-status').value = 'Not Yet';
+  document.getElementById('am-cogs-lines').innerHTML = '';
+  document.getElementById('am-del-btn').style.display = 'none';
+  document.getElementById('agency-modal-t').innerHTML = '<i class="ti ti-calculator"></i>Tambah project';
+  addAgencyCOGSLine();
+  updateAgencyPreview();
+  openModal('agency');
+}
+
+function openEditAgency(idx) {
+  const p = AGENCY_DATA[idx]; if(!p) return;
+  document.getElementById('am-idx').value = idx;
+  document.getElementById('am-brand').value = p.brand;
+  document.getElementById('am-period').value = p.period;
+  document.getElementById('am-gmv').value = p.gmv;
+  document.getElementById('am-status').value = p.status;
+  // Load COGS lines
+  document.getElementById('am-cogs-lines').innerHTML = '';
+  (p.cogs_detail||[{label:'COGS',amt:p.total_cogs}]).forEach(c=>{
+    addAgencyCOGSLine(c.label, c.amt);
+  });
+  document.getElementById('am-del-btn').style.display = '';
+  document.getElementById('agency-modal-t').innerHTML = '<i class="ti ti-edit"></i>Edit — '+p.brand+' '+p.period;
+  updateAgencyPreview();
+  openModal('agency');
+}
+
+let cogsLineN = 0;
+function addAgencyCOGSLine(label='', amt='') {
+  cogsLineN++;
+  const d = document.createElement('div');
+  d.style.cssText = 'display:grid;grid-template-columns:2fr 1fr auto;gap:5px;margin-bottom:4px;align-items:center';
+  d.id = 'cl-'+cogsLineN;
+  d.innerHTML = `
+    <input type="text" value="${label}" placeholder="Nama biaya (Host - Dila, Operator, dll)" oninput="updateAgencyPreview()" style="font-size:12px;padding:4px 7px;border:.5px solid var(--border2);border-radius:4px;font-family:inherit">
+    <input type="number" value="${amt||''}" placeholder="0" oninput="updateAgencyPreview()" style="font-size:12px;padding:4px 7px;border:.5px solid var(--border2);border-radius:4px;font-family:inherit">
+    <button onclick="document.getElementById('cl-${cogsLineN}').remove();updateAgencyPreview()" style="background:none;border:none;cursor:pointer;color:var(--red);font-size:14px"><i class="ti ti-x"></i></button>`;
+  document.getElementById('am-cogs-lines').appendChild(d);
+  updateAgencyPreview();
+}
+
+function updateAgencyPreview() {
+  let totalCogs = 0;
+  document.querySelectorAll('#am-cogs-lines>div').forEach(div=>{
+    const inputs = div.querySelectorAll('input');
+    totalCogs += parseFloat(inputs[1]?.value)||0;
+  });
+  const gmv = parseFloat(document.getElementById('am-gmv')?.value)||0;
+  const gp = gmv - totalCogs;
+  document.getElementById('am-cogs-sum').textContent = 'Rp '+totalCogs.toLocaleString('id');
+  const gpEl = document.getElementById('am-gp-val');
+  gpEl.textContent = 'Rp '+gp.toLocaleString('id');
+  const gpBox = document.getElementById('am-gp-preview');
+  gpBox.style.background = gp>=0?'var(--gbg)':'var(--rbg)';
+  gpBox.style.color = gp>=0?'var(--gt)':'var(--rt)';
+}
+
+function saveAgencyProject() {
+  const idx = document.getElementById('am-idx').value;
+  const brand = document.getElementById('am-brand').value;
+  const period = document.getElementById('am-period').value.trim();
+  const gmv = parseFloat(document.getElementById('am-gmv').value)||0;
+  const status = document.getElementById('am-status').value;
+  if(!brand||!period){showToast('Brand dan periode wajib diisi','err');return;}
+  
+  const cogs_detail = [];
+  let total_cogs = 0;
+  document.querySelectorAll('#am-cogs-lines>div').forEach(div=>{
+    const inputs = div.querySelectorAll('input');
+    const label = inputs[0]?.value.trim();
+    const amt = parseFloat(inputs[1]?.value)||0;
+    if(label){ cogs_detail.push({label,amt}); total_cogs+=amt; }
+  });
+  const margin = gmv - total_cogs;
+  const newProject = {brand, period, gmv, total_cogs, margin, status, cogs_detail};
+
+  if(idx!=='') {
+    AGENCY_DATA[parseInt(idx)] = newProject;
+    showToast('Project diperbarui!');
+  } else {
+    AGENCY_DATA.push(newProject);
+    showToast('Project ditambahkan!');
+  }
+  closeModal('agency');
+  renderAgency();
+}
+
+function deleteAgencyProject() {
+  const idx = document.getElementById('am-idx').value;
+  if(idx==='') return;
+  if(!confirm('Hapus project ini?')) return;
+  AGENCY_DATA.splice(parseInt(idx), 1);
+  closeModal('agency');
+  renderAgency();
+  showToast('Project dihapus');
+}
+function togglePayDetail(id) {
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.style.display = el.style.display==='none' ? 'table-row' : 'none';
+}
+function editPayRate(sessId, hostId, currentRate) {
+  const newRate = prompt(`Edit rate untuk sesi ini (sekarang: Rp ${Number(currentRate).toLocaleString('id')}):`, currentRate);
+  if(newRate===null) return;
+  const rate = parseFloat(newRate)||0;
+  // Update session in memory
+  const s = sessions.find(x=>x.id===sessId);
+  if(s) {
+    try {
+      const cn = s.conflict_notes ? JSON.parse(s.conflict_notes) : {};
+      cn.rate_override = rate;
+      s.conflict_notes = JSON.stringify(cn);
+      // Save to Supabase
+      sb.from('sessions').update({conflict_notes: s.conflict_notes}).eq('id', sessId).then(({error})=>{
+        if(error) console.warn('Save rate:', error.message);
+      });
+    } catch(e) { s.conflict_notes = JSON.stringify({rate_override: rate}); }
+  }
+  showToast('Rate diperbarui → Rp '+Number(rate).toLocaleString('id'));
+  renderPayment();
 }
 let agSearch = '';
 
@@ -1593,15 +2010,21 @@ function renderAgency() {
     const gp_pct = p.gmv>0?(p.margin/p.gmv*100).toFixed(1):0;
     const gpColor = p.margin<0?'var(--red)':p.margin/p.gmv<0.1?'var(--amber)':'var(--green)';
     const rowId = 'ag-detail-'+i;
-    html+=`<tr style="cursor:pointer" onclick="toggleAgDetail('${rowId}')">
+    const origIdx = AGENCY_DATA.indexOf(p);
+    html+=`<tr>
       <td style="color:var(--t3);font-size:11px">${i+1}</td>
-      <td><b>${p.brand}</b></td>
-      <td style="color:var(--t2);font-size:12px">${p.period}</td>
-      <td>Rp ${p.gmv.toLocaleString('id')}</td>
-      <td style="color:var(--t2)">Rp ${p.total_cogs.toLocaleString('id')}</td>
-      <td style="color:${gpColor};font-weight:600">Rp ${p.margin.toLocaleString('id')}</td>
-      <td style="color:${gpColor};font-weight:500">${gp_pct}%</td>
-      <td><span class="badge ${p.status==='Done'?'b-green':'b-amber'}">${p.status}</span> <i class="ti ti-chevron-down" style="font-size:10px;color:var(--t3)"></i></td>
+      <td style="cursor:pointer" onclick="toggleAgDetail('${rowId}')"><b>${p.brand}</b></td>
+      <td style="color:var(--t2);font-size:12px;cursor:pointer" onclick="toggleAgDetail('${rowId}')">${p.period}</td>
+      <td style="cursor:pointer" onclick="toggleAgDetail('${rowId}')">Rp ${p.gmv.toLocaleString('id')}</td>
+      <td style="color:var(--t2);cursor:pointer" onclick="toggleAgDetail('${rowId}')">Rp ${p.total_cogs.toLocaleString('id')}</td>
+      <td style="color:${gpColor};font-weight:600;cursor:pointer" onclick="toggleAgDetail('${rowId}')">Rp ${p.margin.toLocaleString('id')}</td>
+      <td style="color:${gpColor};font-weight:500;cursor:pointer" onclick="toggleAgDetail('${rowId}')">${gp_pct}%</td>
+      <td>
+        <span class="badge ${p.status==='Done'?'b-green':p.status==='On Going'?'b-blue':'b-amber'}">${p.status}</span>
+        <button onclick="openEditAgProject(${origIdx})" style="margin-left:4px;font-size:10px;padding:2px 6px;border:.5px solid var(--border2);border-radius:4px;cursor:pointer;background:none;font-family:inherit">
+          <i class="ti ti-edit" style="font-size:10px"></i>
+        </button>
+      </td>
     </tr>
     <tr id="${rowId}" style="display:none;background:var(--s2)">
       <td colspan="8" style="padding:6px 16px 10px 32px">
@@ -1695,7 +2118,8 @@ const PAGE_META = {
     actions:`<button class="btn btn-p" onclick="openAddHost()"><i class="ti ti-plus"></i>Tambah Host</button>`},
   payment:{title:'Payment Calculation',icon:'ti-cash',
     actions:`<button class="btn btn-s"><i class="ti ti-download"></i>Export</button>`},
-  agency:{title:'Agency Calculation',icon:'ti-calculator',actions:''},
+  agency:{title:'Agency Calculation',icon:'ti-calculator',
+    actions:`<button class="btn btn-p" onclick="openAddAgProject()"><i class="ti ti-plus"></i>Tambah Project</button>`},
   invoice:{title:'Invoice',icon:'ti-file-invoice',
     actions:`<button class="btn btn-p" onclick="openModal('invoice');invLineN=0;document.getElementById('im-lines').innerHTML='';addInvLine()"><i class="ti ti-plus"></i>Buat Invoice</button>`},
   brands:{title:'Brands & Akun',icon:'ti-building-store',
