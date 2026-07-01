@@ -24,7 +24,13 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-d
 #conn-banner{display:none;position:fixed;top:0;left:0;right:0;z-index:999;padding:7px 16px;font-size:12px;text-align:center;color:#fff}
 .layout{display:flex;flex:1;min-height:0;margin-top:0}
 /* SIDEBAR */
-.sidebar{width:210px;flex-shrink:0;background:var(--surface);border-right:.5px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0}
+.sidebar{width:210px;flex-shrink:0;background:var(--surface);border-right:.5px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;transition:width .2s ease,min-width .2s ease}
+.sidebar.collapsed{width:48px;min-width:48px}
+.sidebar.collapsed .nav-sec,.sidebar.collapsed .sb-sub,.sidebar.collapsed .sb-logo,.sidebar.collapsed .ni span{display:none}
+.sidebar.collapsed .ni{padding:8px;justify-content:center}
+.sidebar.collapsed .ni i{margin:0}
+.sidebar.collapsed .sb-brand{padding:.75rem .5rem;justify-content:center}
+.sidebar.collapsed #sb-toggle-btn{margin:0}
 .sb-brand{padding:1rem;border-bottom:.5px solid var(--border)}
 .sb-brand .logo{font-size:14px;font-weight:700}
 .sb-brand .sub{font-size:11px;color:var(--t3);margin-top:1px}
@@ -175,10 +181,16 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-d
 <div class="layout">
 
 <!-- SIDEBAR -->
-<div class="sidebar">
-  <div class="sb-brand">
-    <div class="logo">THX Agency</div>
-    <div class="sub">Live Operation System</div>
+<div class="sidebar" id="main-sidebar">
+  <div class="sb-brand" style="display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div class="logo" id="sb-logo">THX Agency</div>
+      <div class="sub" id="sb-sub">Live Operation System</div>
+    </div>
+    <button onclick="toggleSidebar()" id="sb-toggle-btn" title="Sembunyikan sidebar"
+      style="background:none;border:.5px solid var(--border);border-radius:6px;padding:3px 6px;cursor:pointer;color:var(--t3);font-size:12px;flex-shrink:0">
+      <i class="ti ti-layout-sidebar-left-collapse" id="sb-toggle-icon"></i>
+    </button>
   </div>
   <div class="nav">
     <div class="nav-sec">Operasional</div>
@@ -295,10 +307,17 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-d
     <div class="stat"><div class="stat-l">Freelance</div><div class="stat-v" id="h-fl">—</div></div>
     <div class="stat"><div class="stat-l">Aktif bulan ini</div><div class="stat-v" id="h-act">—</div></div>
   </div>
-  <div class="chips" style="margin-bottom:.9rem" id="host-type-chips">
-    <button class="chip on" onclick="setHostFilter(this,'all')">Semua</button>
-    <button class="chip" onclick="setHostFilter(this,'fulltime')">Fulltime</button>
-    <button class="chip" onclick="setHostFilter(this,'freelance')">Freelance</button>
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:.9rem;flex-wrap:wrap">
+    <div class="chips" id="host-type-chips">
+      <button class="chip on" onclick="setHostFilter(this,'all')">Semua</button>
+      <button class="chip" onclick="setHostFilter(this,'fulltime')">Fulltime</button>
+      <button class="chip" onclick="setHostFilter(this,'freelance')">Freelance</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
+      <label style="font-size:12px;color:var(--t2)">Bulan:</label>
+      <input type="month" id="host-month-filter" onchange="renderHosts()"
+        style="font-size:12px;padding:4px 8px;border:.5px solid var(--border2);border-radius:var(--r);background:var(--surface)">
+    </div>
   </div>
   <div class="card"><div style="overflow-x:auto"><table class="dt" id="host-table"></table></div></div>
 </div>
@@ -367,7 +386,13 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-d
 
 <!-- ===== BRANDS ===== -->
 <div id="page-brands" class="page">
-  <div id="brand-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px"></div>
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:1rem;flex-wrap:wrap">
+    <label style="font-size:12px;color:var(--t2);font-weight:500">Tampilkan bulan:</label>
+    <input type="month" id="brand-month-filter" onchange="renderBrands()" 
+      style="font-size:12px;padding:5px 9px;border:.5px solid var(--border2);border-radius:var(--r);background:var(--surface)">
+    <span style="font-size:11px;color:var(--t3)">Target jam bisa berbeda per bulan</span>
+  </div>
+  <div id="brand-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px"></div>
 </div>
 
 <!-- ===== SETTINGS ===== -->
@@ -506,77 +531,53 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-d
 
 <!-- AGENCY PROJECT MODAL -->
 <div class="ov" id="modal-agency">
-<div class="modal" style="width:560px">
-  <div class="modal-t" id="ag-modal-t"><i class="ti ti-calculator"></i>Tambah project</div>
-  <input type="hidden" id="agm-idx">
-  <div class="fg-row">
-    <div class="fg"><div class="fl">Brand</div>
-      <select id="agm-brand">
-        <option value="">Pilih brand / ketik manual...</option>
-        <option>Natur-E</option><option>Natur-E Colla</option><option>Natur-E Skincare</option>
-        <option>Cerebrofort</option><option>Herbablend</option><option>Veluna</option>
-        <option>Lainnya</option>
-      </select>
-    </div>
-    <div class="fg"><div class="fl">Brand (manual jika tidak ada)</div><input type="text" id="agm-brand-manual" placeholder="Contoh: Hikmat"></div>
-  </div>
-  <div class="fg"><div class="fl">Periode</div><input type="text" id="agm-period" placeholder="Contoh: Mei 2026 atau 1-31 Mei 2026"></div>
-  <div class="fg-row">
-    <div class="fg"><div class="fl">GMV (Rp)</div><input type="number" id="agm-gmv" placeholder="0" oninput="calcAgModal()"></div>
-    <div class="fg"><div class="fl">Status</div>
-      <select id="agm-status"><option value="Done">Done</option><option value="Not Yet">Not Yet</option><option value="On Going">On Going</option></select>
-    </div>
-  </div>
-  <div style="font-size:11px;font-weight:600;color:var(--t3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px;margin-top:4px">Detail COGS</div>
-  <div id="agm-cogs-lines" style="max-height:240px;overflow-y:auto;display:flex;flex-direction:column;gap:4px"></div>
-  <button class="btn btn-s btn-xs" onclick="addAgCOGSLine()" style="margin-top:6px"><i class="ti ti-plus"></i>Tambah baris COGS</button>
-  <div style="margin-top:10px;padding:8px 12px;background:var(--s2);border-radius:var(--r);display:flex;justify-content:space-between;font-size:13px">
-    <span>Total COGS</span><b id="agm-total-cogs">Rp 0</b>
-  </div>
-  <div style="margin-top:4px;padding:8px 12px;border-radius:var(--r);display:flex;justify-content:space-between;font-size:13px" id="agm-gp-bar">
-    <span>Gross Profit</span><b id="agm-gp-val">Rp 0</b>
-  </div>
-  <div class="modal-f">
-    <button class="btn btn-s" style="flex:1" onclick="closeModal('agency')">Batal</button>
-    <button class="btn btn-d btn-xs" id="agm-del-btn" onclick="deleteAgProject()" style="display:none"><i class="ti ti-trash"></i></button>
-    <button class="btn btn-p" style="flex:2" onclick="saveAgProject()"><i class="ti ti-check"></i>Simpan</button>
-  </div>
-</div>
-</div>
-
-<!-- AGENCY PROJECT MODAL -->
-<div class="ov" id="modal-agency">
-<div class="modal">
+<div class="modal" style="width:520px">
   <div class="modal-t" id="agency-modal-t"><i class="ti ti-calculator"></i>Tambah project</div>
   <input type="hidden" id="am-idx">
   <div class="fg-row">
-    <div class="fg"><div class="fl">Brand</div>
-      <select id="am-brand">
-        <option>Natur-E</option><option>Natur-E Colla</option><option>Natur-E Skincare</option>
-        <option>Cerebrofort</option><option>Herbablend</option><option>Veluna</option>
-        <option>Hikmat</option><option>Sebamed</option><option>Instax</option><option>Lainnya</option>
+    <div class="fg">
+      <div class="fl">Brand</div>
+      <select id="am-brand" style="width:100%" onchange="onAgBrandChange()">
+        <option value="Natur-E">Natur-E</option>
+        <option value="Natur-E Colla">Natur-E Colla</option>
+        <option value="Natur-E Skincare">Natur-E Skincare</option>
+        <option value="Cerebrofort">Cerebrofort</option>
+        <option value="Herbablend">Herbablend</option>
+        <option value="Veluna">Veluna</option>
+        <option value="Hikmat">Hikmat</option>
+        <option value="Sebamed">Sebamed</option>
+        <option value="Instax">Instax</option>
+        <option value="_manual">Lainnya (ketik manual)</option>
       </select>
     </div>
-    <div class="fg"><div class="fl">Periode</div><input type="text" id="am-period" placeholder="contoh: Jun 2026"></div>
-  </div>
-  <div class="fg-row">
-    <div class="fg"><div class="fl">GMV (Rp)</div><input type="number" id="am-gmv" placeholder="0"></div>
-    <div class="fg"><div class="fl">Status</div>
-      <select id="am-status"><option value="Done">Done</option><option value="Not Yet">Not Yet</option><option value="On Going">On Going</option></select>
+    <div class="fg" id="am-brand-manual-wrap" style="display:none">
+      <div class="fl">Nama brand (manual)</div>
+      <input type="text" id="am-brand-manual" placeholder="Nama brand">
     </div>
   </div>
-  <div style="font-size:11px;font-weight:600;color:var(--t3);margin:8px 0 6px;text-transform:uppercase;letter-spacing:.04em">Detail COGS</div>
-  <div id="am-cogs-lines"></div>
-  <button class="btn btn-s btn-xs" onclick="addAgencyCOGSLine()" style="margin-top:4px"><i class="ti ti-plus"></i>Tambah baris COGS</button>
-  <div id="am-cogs-total" style="margin-top:8px;padding:6px 10px;background:var(--s2);border-radius:var(--r);font-size:12px;font-weight:600;display:flex;justify-content:space-between">
+  <div class="fg"><div class="fl">Periode</div><input type="text" id="am-period" placeholder="Contoh: Jul 2026 atau 1-31 Jul 2026"></div>
+  <div class="fg-row">
+    <div class="fg"><div class="fl">GMV (Rp)</div><input type="number" id="am-gmv" placeholder="0" oninput="updateAgencyPreview()"></div>
+    <div class="fg"><div class="fl">Status</div>
+      <select id="am-status">
+        <option value="Done">Done</option>
+        <option value="Not Yet">Not Yet</option>
+        <option value="On Going">On Going</option>
+      </select>
+    </div>
+  </div>
+  <div style="font-size:11px;font-weight:600;color:var(--t3);margin:10px 0 6px;text-transform:uppercase;letter-spacing:.04em">Detail COGS</div>
+  <div id="am-cogs-lines" style="max-height:200px;overflow-y:auto"></div>
+  <button class="btn btn-s btn-xs" onclick="addAgencyCOGSLine()" style="margin-top:5px"><i class="ti ti-plus"></i>Tambah baris COGS</button>
+  <div style="margin-top:8px;padding:6px 10px;background:var(--s2);border-radius:var(--r);font-size:12px;font-weight:600;display:flex;justify-content:space-between">
     <span>Total COGS</span><span id="am-cogs-sum">Rp 0</span>
   </div>
-  <div id="am-gp-preview" style="margin-top:4px;padding:6px 10px;border-radius:var(--r);font-size:12px;font-weight:600;display:flex;justify-content:space-between;background:var(--gbg)">
+  <div id="am-gp-preview" style="margin-top:3px;padding:6px 10px;border-radius:var(--r);font-size:12px;font-weight:600;display:flex;justify-content:space-between;background:var(--gbg)">
     <span>Gross Profit</span><span id="am-gp-val">Rp 0</span>
   </div>
   <div class="modal-f">
     <button class="btn btn-s" style="flex:1" onclick="closeModal('agency')">Batal</button>
-    <button class="btn btn-d btn-xs" id="am-del-btn" onclick="deleteAgencyProject()" style="display:none"><i class="ti ti-trash"></i></button>
+    <button class="btn btn-d btn-xs" id="am-del-btn" onclick="deleteAgencyProject()" style="display:none"><i class="ti ti-trash"></i> Hapus</button>
     <button class="btn btn-p" style="flex:2" onclick="saveAgencyProject()"><i class="ti ti-check"></i>Simpan</button>
   </div>
 </div>
@@ -1074,8 +1075,9 @@ function setBrandFilter(el,id) {
 // ── HOST MANAGEMENT ───────────────────────────────────────────
 function renderHosts() {
   const list = hosts.filter(h=>hostTypeFilter==='all'||h.type===hostTypeFilter);
-  const thisMonth = new Date().toISOString().slice(0,7);
-  let html = '<thead><tr><th>Host</th><th>Tipe</th><th>Rate default/jam</th><th>Jam bulan ini</th><th>Catatan</th><th></th></tr></thead><tbody>';
+  const thisMonth = getVal('host-month-filter') || new Date().toISOString().slice(0,7);
+  const monthLabel = new Date(thisMonth+'-01').toLocaleDateString('id-ID',{month:'long',year:'numeric'});
+  let html = `<thead><tr><th>Host</th><th>Tipe</th><th>Rate default/jam</th><th>Jam live — ${monthLabel}</th><th>Catatan</th><th></th></tr></thead><tbody>`;
   list.forEach(h=>{
     const jam = sessions.filter(s=>s.session_date?.startsWith(thisMonth)&&(s.host_ids||[]).includes(h.id))
       .reduce((a,s)=>a+(s.duration_hours||0),0);
@@ -1161,28 +1163,53 @@ async function deleteHost() {
 }
 
 // ── BRAND MANAGEMENT ─────────────────────────────────────────
+// Monthly brand targets stored per brand+month
+let brandMonthlyTargets = JSON.parse(localStorage.getItem('thx_brand_targets') || '{}');
+
+function getBrandTarget(brandId, month) {
+  const key = brandId + '_' + month;
+  return brandMonthlyTargets[key] || null;
+}
+
+function setBrandTarget(brandId, month, hours) {
+  const key = brandId + '_' + month;
+  brandMonthlyTargets[key] = hours;
+  localStorage.setItem('thx_brand_targets', JSON.stringify(brandMonthlyTargets));
+}
+
 function renderBrands() {
-  const thisMonth = new Date().toISOString().slice(0,7);
+  const viewMonth = getVal('brand-month-filter') || new Date().toISOString().slice(0,7);
   let html = '';
   brands.forEach(b=>{
-    const jam = sessions.filter(s=>s.brand_id===b.id&&s.session_date?.startsWith(thisMonth)).reduce((a,s)=>a+(s.duration_hours||0),0);
-    const tgt = b.target_hours_monthly||1;
-    const pct = Math.min(100,Math.round(jam/tgt*100));
+    const jam = sessions.filter(s=>s.brand_id===b.id&&s.session_date?.startsWith(viewMonth)).reduce((a,s)=>a+(s.duration_hours||0),0);
+    // Check monthly target first, fallback to brand default
+    const monthlyTgt = getBrandTarget(b.id, viewMonth);
+    const tgt = monthlyTgt !== null ? monthlyTgt : (b.target_hours_monthly||0);
+    const pct = tgt > 0 ? Math.min(100,Math.round(jam/tgt*100)) : 0;
     const pc = pct<50?'pf-d':pct<80?'pf-w':'';
+    const monthLabel = new Date(viewMonth+'-01').toLocaleDateString('id-ID',{month:'long',year:'numeric'});
     html += `<div class="card">
       <div class="cb">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
-          <div><div style="font-size:14px;font-weight:700">${b.name}</div><div style="font-size:11px;color:var(--t3)">${b.client_name||''}</div></div>
-          <div style="display:flex;gap:4px">
-            <button class="btn btn-s btn-xs" onclick="openEditBrand('${b.id}')"><i class="ti ti-edit"></i></button>
+          <div>
+            <div style="font-size:14px;font-weight:700">${b.name}</div>
+            <div style="font-size:11px;color:var(--t3)">${b.client_name||''}</div>
           </div>
+          <button class="btn btn-s btn-xs" onclick="openEditBrand('${b.id}')"><i class="ti ti-edit"></i></button>
         </div>
-        <div style="font-size:11px;color:var(--t3);margin-bottom:6px">${(b.platforms||[]).join(' · ')} · ${accounts.filter(a=>a.brand_id===b.id).length} akun</div>
+        <div style="font-size:11px;color:var(--t3);margin-bottom:8px">${(b.platforms||[]).join(' · ')} · ${accounts.filter(a=>a.brand_id===b.id).length} akun</div>
+        <div style="font-size:11px;font-weight:600;color:var(--t2);margin-bottom:4px">${monthLabel}</div>
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
           <div class="prog" style="flex:1;height:7px"><div class="pf ${pc}" style="width:${pct}%"></div></div>
-          <span style="font-size:11px;color:var(--t3)">${pct}%</span>
+          <span style="font-size:11px;color:var(--t3)">${jam}j / ${tgt}j</span>
         </div>
-        <div style="font-size:11px;color:var(--t3)">${jam}j / <input type="number" value="${tgt}" onchange="updateBrandTarget('${b.id}',this.value)" style="width:50px;padding:1px 4px;font-size:11px;border:.5px solid var(--border2);border-radius:3px;font-family:inherit"> jam target/bulan</div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t3)">
+          <span>Target ${monthLabel}:</span>
+          <input type="number" value="${tgt}" 
+            onchange="setBrandTarget('${b.id}','${viewMonth}',parseInt(this.value)||0);renderBrands()"
+            style="width:60px;padding:2px 5px;font-size:11px;border:.5px solid var(--border2);border-radius:3px;font-family:inherit">
+          <span>jam</span>
+        </div>
       </div>
     </div>`;
   });
@@ -1427,6 +1454,25 @@ function getPaySessions() {
   }
 }
 
+// Track paid status per host (in-memory, can be persisted to Supabase)
+let paidHosts = JSON.parse(localStorage.getItem('thx_paid_hosts') || '{}');
+
+function markPaid(hostId) {
+  const period = getVal('pay-month') || new Date().toISOString().slice(0,7);
+  const key = hostId + '_' + period;
+  if(paidHosts[key]) {
+    if(!confirm('Tandai sebagai belum dibayar?')) return;
+    delete paidHosts[key];
+    showToast('Status direset ke Pending');
+  } else {
+    if(!confirm('Tandai host ini sudah dibayar?')) return;
+    paidHosts[key] = { paidAt: new Date().toISOString() };
+    showToast('✓ Ditandai sudah dibayar!');
+  }
+  localStorage.setItem('thx_paid_hosts', JSON.stringify(paidHosts));
+  renderPayment();
+}
+
 function togglePayDetail(id){
   const el=document.getElementById(id); if(!el) return;
   el.style.display=el.style.display==='none'?'table-row':'none';
@@ -1479,7 +1525,11 @@ function renderPayment() {
       const hasRateOverride = rate > 0;
       if(h.type === 'fulltime' && !hasRateOverride) return; // pure fulltime, skip
 
-      if(!byHost[hid]) byHost[hid]={name:h.name,jam:0,sessions:0,totalFee:0,type:h.type,sessDetail:[]};
+      if(!byHost[hid]) {
+        const period = getVal('pay-month') || new Date().toISOString().slice(0,7);
+        const paidKey = hid + '_' + period;
+        byHost[hid]={name:h.name,jam:0,sessions:0,totalFee:0,type:h.type,sessDetail:[],paid:!!paidHosts[paidKey]};
+      }
       const jam = s.duration_hours||0;
       byHost[hid].jam+=jam;
       byHost[hid].sessions++;
@@ -1505,7 +1555,14 @@ function renderPayment() {
       <td style="color:var(--t3)">${d.sessions}</td>
       <td><b>${d.jam}j</b></td>
       <td style="font-weight:700">Rp ${Number(d.totalFee).toLocaleString('id')}</td>
-      <td><span class="badge b-amber">Pending</span> <i class="ti ti-chevron-down" style="font-size:10px;color:var(--t3)"></i></td>
+      <td style="white-space:nowrap">
+        ${d.paid
+          ? `<span class="badge b-green"><i class="ti ti-check" style="font-size:9px"></i> Paid</span>
+             <button onclick="event.stopPropagation();markPaid('${id}')" style="font-size:10px;padding:2px 6px;border:.5px solid var(--border2);border-radius:4px;cursor:pointer;background:none;color:var(--t2);font-family:inherit;margin-left:3px">↩ Reset</button>`
+          : `<span class="badge b-amber">Pending</span>
+             <button onclick="event.stopPropagation();markPaid('${id}')" style="font-size:10px;padding:2px 6px;border:.5px solid var(--green);border-radius:4px;cursor:pointer;background:none;color:var(--green);font-family:inherit;margin-left:3px">✓ Bayar</button>`}
+        <i class="ti ti-chevron-down" style="font-size:10px;color:var(--t3);margin-left:2px"></i>
+      </td>
     </tr>
     <tr id="${rowId}" style="display:none;background:var(--s2)">
       <td colspan="5" style="padding:0">
@@ -1749,9 +1806,22 @@ const AGENCY_DATA = [
    cogs_detail:[{label:"Freelance Veluna",amt:27735000}]},
 ];
 
+function onAgBrandChange() {
+  const v = document.getElementById('am-brand').value;
+  const wrap = document.getElementById('am-brand-manual-wrap');
+  if(wrap) wrap.style.display = v==='_manual' ? '' : 'none';
+}
+
+function getAgBrandName() {
+  const v = document.getElementById('am-brand').value;
+  if(v==='_manual') return document.getElementById('am-brand-manual').value.trim() || 'Brand Baru';
+  return v;
+}
+
 function openAddAgency() {
   document.getElementById('am-idx').value = '';
   document.getElementById('am-brand').value = 'Natur-E';
+  if(document.getElementById('am-brand-manual-wrap')) document.getElementById('am-brand-manual-wrap').style.display='none';
   document.getElementById('am-period').value = '';
   document.getElementById('am-gmv').value = '';
   document.getElementById('am-status').value = 'Not Yet';
@@ -1766,13 +1836,22 @@ function openAddAgency() {
 function openEditAgency(idx) {
   const p = AGENCY_DATA[idx]; if(!p) return;
   document.getElementById('am-idx').value = idx;
-  document.getElementById('am-brand').value = p.brand;
+  // Set brand - check if it's a known option, otherwise use manual
+  const brandSel = document.getElementById('am-brand');
+  const knownBrands = Array.from(brandSel.options).map(o=>o.value);
+  if(knownBrands.includes(p.brand)) {
+    brandSel.value = p.brand;
+    if(document.getElementById('am-brand-manual-wrap')) document.getElementById('am-brand-manual-wrap').style.display='none';
+  } else {
+    brandSel.value = '_manual';
+    if(document.getElementById('am-brand-manual')) document.getElementById('am-brand-manual').value = p.brand;
+    if(document.getElementById('am-brand-manual-wrap')) document.getElementById('am-brand-manual-wrap').style.display='';
+  }
   document.getElementById('am-period').value = p.period;
   document.getElementById('am-gmv').value = p.gmv;
   document.getElementById('am-status').value = p.status;
-  // Load COGS lines
   document.getElementById('am-cogs-lines').innerHTML = '';
-  (p.cogs_detail||[{label:'COGS',amt:p.total_cogs}]).forEach(c=>{
+  (p.cogs_detail||[{label:'Total COGS',amt:p.total_cogs}]).forEach(c=>{
     addAgencyCOGSLine(c.label, c.amt);
   });
   document.getElementById('am-del-btn').style.display = '';
@@ -1813,7 +1892,7 @@ function updateAgencyPreview() {
 
 function saveAgencyProject() {
   const idx = document.getElementById('am-idx').value;
-  const brand = document.getElementById('am-brand').value;
+  const brand = getAgBrandName();
   const period = document.getElementById('am-period').value.trim();
   const gmv = parseFloat(document.getElementById('am-gmv').value)||0;
   const status = document.getElementById('am-status').value;
@@ -1911,7 +1990,7 @@ function renderAgency() {
       <td style="color:${gpColor};font-weight:500;cursor:pointer" onclick="toggleAgDetail('${rowId}')">${gp_pct}%</td>
       <td>
         <span class="badge ${p.status==='Done'?'b-green':p.status==='On Going'?'b-blue':'b-amber'}">${p.status}</span>
-        <button onclick="openEditAgProject(${origIdx})" style="margin-left:4px;font-size:10px;padding:2px 6px;border:.5px solid var(--border2);border-radius:4px;cursor:pointer;background:none;font-family:inherit">
+        <button onclick="openEditAgency(${origIdx})" style="margin-left:4px;font-size:10px;padding:2px 6px;border:.5px solid var(--border2);border-radius:4px;cursor:pointer;background:none;font-family:inherit">
           <i class="ti ti-edit" style="font-size:10px"></i>
         </button>
       </td>
@@ -2025,14 +2104,44 @@ function goPage(id,el) {
   const m=PAGE_META[id]||{};
   document.getElementById('page-title').innerHTML=`<i class="ti ${m.icon||'ti-grid'}"></i>${m.title||id}`;
   document.getElementById('topbar-actions').innerHTML=m.actions||'';
-  if(id==='hosts') renderHosts();
+  if(id==='hosts') {
+    const hf = document.getElementById('host-month-filter');
+    if(hf && !hf.value) hf.value = new Date().toISOString().slice(0,7);
+    renderHosts();
+  }
   if(id==='payment') renderPayment();
-  if(id==='brands') renderBrands();
+  if(id==='brands') {
+    const bf = document.getElementById('brand-month-filter');
+    if(bf && !bf.value) bf.value = new Date().toISOString().slice(0,7);
+    renderBrands();
+  }
   if(id==='livedata') renderLD();
   if(id==='agency') renderAgency();
 }
 
 // ── MODALS ────────────────────────────────────────────────────
+function toggleSidebar() {
+  const sb = document.getElementById('main-sidebar');
+  const icon = document.getElementById('sb-toggle-icon');
+  const collapsed = sb.classList.toggle('collapsed');
+  if(icon) {
+    icon.className = collapsed
+      ? 'ti ti-layout-sidebar-left-expand'
+      : 'ti ti-layout-sidebar-left-collapse';
+  }
+  localStorage.setItem('thx_sidebar_collapsed', collapsed ? '1' : '0');
+}
+
+// Restore sidebar state on load
+document.addEventListener('DOMContentLoaded', ()=>{
+  if(localStorage.getItem('thx_sidebar_collapsed')==='1') {
+    const sb=document.getElementById('main-sidebar');
+    const icon=document.getElementById('sb-toggle-icon');
+    if(sb) sb.classList.add('collapsed');
+    if(icon) icon.className='ti ti-layout-sidebar-left-expand';
+  }
+});
+
 function openModal(id){document.getElementById('modal-'+id).classList.add('open');}
 function closeModal(id){document.getElementById('modal-'+id).classList.remove('open');}
 document.querySelectorAll('.ov').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');}));
