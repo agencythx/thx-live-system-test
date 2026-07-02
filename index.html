@@ -988,8 +988,13 @@ function renderHostView(filtered) {
     if(a.type===b.type) return a.name.localeCompare(b.name);
     return a.type==='fulltime'?-1:1;
   });
+  const todayStr = fmt(new Date());
   let html = '<thead><tr><th class="host-col" style="min-width:110px">Host</th>';
-  dates.forEach(d=>{html+=`<th style="min-width:100px">${fmtD(d)}</th>`;});
+  dates.forEach(d=>{
+    const ds=fmt(d);
+    const isToday=ds===todayStr;
+    html+=`<th style="min-width:110px;${isToday?'background:var(--abg);color:var(--accent)':''}">${fmtD(d)}${isToday?' <span style=\"font-size:9px;background:var(--accent);color:#fff;padding:1px 4px;border-radius:3px;\">Hari ini</span>':''}</th>`;
+  });
   html += '<th style="min-width:60px">Total</th></tr></thead><tbody>';
   sortedHosts.forEach(h=>{
     const weekSess = filtered.filter(s=>(s.host_ids||[]).includes(h.id));
@@ -998,8 +1003,10 @@ function renderHostView(filtered) {
       <td class="host-col">
         <div style="display:flex;align-items:center;gap:5px">
           <span class="av ${h.type==='fulltime'?'av-ft':'av-fl'}">${h.name.slice(0,2).toUpperCase()}</span>
-          <div><div style="font-weight:500;font-size:12px">${h.name}</div>
-          <div style="font-size:10px;color:var(--t3)">${h.type==='fulltime'?'Fulltime':'Freelance'}</div></div>
+          <div>
+            <div style="font-weight:600;font-size:13px">${h.name}</div>
+            <div style="font-size:10px;color:var(--t3)">${h.type==='fulltime'?'Fulltime':'Freelance'}</div>
+          </div>
         </div>
       </td>`;
     dates.forEach((_,di)=>{
@@ -1010,17 +1017,24 @@ function renderHostView(filtered) {
         html += `<td style="background:var(--s2);text-align:center"><span style="font-size:10px;color:var(--t3)">—</span></td>`;
       } else {
         html += `<td>`;
-        hSess.forEach(s=>{
+        // Sort by start time ascending so earliest shift appears first
+        const sortedSess = [...hSess].sort((a,b)=>toHour(a.start_time)-toHour(b.start_time));
+        sortedSess.forEach(s=>{
           const b=brands.find(x=>x.id===s.brand_id);
           const plat=s.platform||'';
           const cls=plat==='TikTok'?'sb-tk':plat==='Shopee'?'sb-sh':plat==='Tokopedia'?'sb-tp':'sb-ml';
-          html+=`<div class="sb ${cls}" style="margin-bottom:2px">
+          const isFirst = sortedSess.indexOf(s) === 0;
+          html+=`<div class="sb ${cls}" style="margin-bottom:3px;${isFirst?'border-left-width:4px':''}">
+            <div style="display:flex;align-items:center;gap:4px;margin-bottom:1px">
+              ${isFirst ? '<span style="font-size:9px;font-weight:700;background:var(--accent);color:#fff;padding:1px 5px;border-radius:3px;letter-spacing:.02em">MASUK</span>' : ''}
+              <div style="font-size:12px;font-weight:700;color:inherit">${s.start_time||''} – ${getEndTime(s)}</div>
+              <div style="font-size:10px;opacity:.7">(${s.duration_hours}j)</div>
+            </div>
             <div class="sb-b" style="font-size:11px">${b?.name||'—'}</div>
-            <div class="sb-h" style="font-size:10px;font-weight:600">${s.start_time||''} – ${getEndTime(s)} (${s.duration_hours}j)</div>
-            <div class="sb-h" style="font-size:10px;padding:1px 4px;display:inline-block;border-radius:3px;background:rgba(0,0,0,.06)">${plat}</div>
+            <div style="font-size:10px;padding:1px 5px;display:inline-block;border-radius:3px;background:rgba(0,0,0,.07);margin-top:1px">${plat}</div>
           </div>`;
         });
-        if(dayHrs>0) html+=`<div style="font-size:10px;color:var(--t3);text-align:right;padding:2px 4px">Total: <b>${dayHrs}j</b></div>`;
+        if(dayHrs>0) html+=`<div style="font-size:10px;color:var(--accent);text-align:right;padding:2px 4px;font-weight:600">Total: ${dayHrs}j</div>`;
         html+=`</td>`;
       }
     });
