@@ -615,13 +615,13 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-d
   <div style="font-size:16px;font-weight:600;margin-bottom:2px">THX Agency</div>
   <div style="font-size:12px;color:var(--t3);margin-bottom:1.25rem">Live Operation System</div>
   <div class="fg"><div class="fl" style="text-align:left">Password</div>
-    <input type="password" id="login-pw" placeholder="Masukkan password..." onkeydown="if(event.key==='Enter')doLogin()">
+    <input type="password" id="login-pw" placeholder="Masukkan password..." onkeydown="if(event.key==='Enter'&&typeof doLogin==='function')doLogin()">
   </div>
   <div id="login-err" style="font-size:12px;color:var(--red);margin-top:4px;display:none">Password salah</div>
-  <button class="btn btn-p" style="width:100%;margin-top:10px;justify-content:center" onclick="doLogin()"><i class="ti ti-login"></i>Masuk</button>
+  <button class="btn btn-p" style="width:100%;margin-top:10px;justify-content:center" onclick="if(typeof doLogin==='function')doLogin();else alert('Memuat...')"><i class="ti ti-login"></i>Masuk</button>
   <div style="margin-top:12px;padding-top:12px;border-top:.5px solid var(--border)">
     <div style="font-size:11px;color:var(--t3);margin-bottom:6px">Atau lanjut tanpa login:</div>
-    <button class="btn btn-s btn-xs" onclick="loginAs('viewer')" style="width:100%;justify-content:center"><i class="ti ti-eye"></i>Lihat sebagai Viewer (publik)</button>
+    <button class="btn btn-s btn-xs" onclick="if(typeof loginAs==='function')loginAs('viewer');else alert('Memuat...')" style="width:100%;justify-content:center"><i class="ti ti-eye"></i>Lihat sebagai Viewer (publik)</button>
   </div>
 </div>
 </div>
@@ -2290,6 +2290,67 @@ function getDemoSessions(){
 }
 
 // init is called after login via loginAs()
+
+// ── ROLE-BASED ACCESS CONTROL ────────────────────────────────
+const ROLES = {
+  owner:  { pw: 'thx2026owner', label: 'Owner',    level: 4 },
+  pic:    { pw: 'thx2026pic',   label: 'PIC Host', level: 3 },
+  team:   { pw: 'thx2026team',  label: 'Tim Ops',  level: 2 },
+  viewer: { pw: '',             label: 'Viewer',   level: 1 },
+};
+const PAGE_ACCESS = {
+  sched:1, livedata:1, hosts:3, payment:3, agency:4, invoice:4, brands:4, settings:4
+};
+let currentRole = null;
+let currentLevel = 0;
+
+function doLogin() {
+  const pw = (document.getElementById('login-pw')||{}).value || '';
+  const err = document.getElementById('login-err');
+  for(const [role, cfg] of Object.entries(ROLES)) {
+    if(cfg.pw === pw || (role==='viewer' && pw==='')) {
+      loginAs(role); return;
+    }
+  }
+  if(err){ err.style.display='block'; setTimeout(()=>err.style.display='none',2000); }
+}
+
+function loginAs(role) {
+  currentRole = role;
+  currentLevel = (ROLES[role]||ROLES.viewer).level;
+  localStorage.setItem('thx_role', role);
+  const modal = document.getElementById('modal-login');
+  if(modal) modal.style.display = 'none';
+  applyRoleUI();
+  init();
+}
+
+function applyRoleUI() {
+  const cfg = ROLES[currentRole] || ROLES.viewer;
+  const foot = document.querySelector('.sb-foot');
+  if(foot) foot.innerHTML = `<span style="font-size:10px;background:var(--abg);color:var(--accent);padding:2px 7px;border-radius:10px;font-weight:500">${cfg.label}</span>
+    <button onclick="logoutRole()" style="margin-left:6px;font-size:10px;background:none;border:.5px solid var(--border2);border-radius:4px;padding:1px 6px;cursor:pointer;color:var(--t3)">Logout</button>`;
+  document.querySelectorAll('.ni').forEach(btn => {
+    const a = btn.getAttribute('onclick') || '';
+    const m = a.match(/goPage\'?\'?(\w+)/);
+    if(m) btn.style.display = currentLevel >= (PAGE_ACCESS[m[1]]||1) ? '' : 'none';
+  });
+}
+
+function logoutRole() {
+  currentRole = null; currentLevel = 0;
+  localStorage.removeItem('thx_role');
+  const modal = document.getElementById('modal-login');
+  if(modal) modal.style.display = 'flex';
+  const pw = document.getElementById('login-pw');
+  if(pw) pw.value = '';
+}
+
+function restoreSession() {
+  const saved = localStorage.getItem('thx_role');
+  if(saved && ROLES[saved]) { loginAs(saved); return true; }
+  return false;
+}
 </script>
 </body>
 </html>
