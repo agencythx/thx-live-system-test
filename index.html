@@ -440,6 +440,15 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-d
     <button class="btn btn-p" onclick="saveSettings()"><i class="ti ti-check"></i>Simpan & Konek</button>
     <div id="conn-status" style="margin-top:9px;font-size:12px;color:var(--t3)"></div>
   </div></div>
+<div class="card" style="margin-top:.9rem"><div class="ch"><h4><i class="ti ti-cloud-upload"></i>Sync Data Lokal ke Supabase</h4></div>
+  <div class="cb">
+    <div style="font-size:12px;color:var(--t2);margin-bottom:10px">Data yang disimpan saat Supabase offline tersimpan di browser lokal. Klik untuk upload ke Supabase agar permanen.</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-s" onclick="syncLocalHosts()"><i class="ti ti-users"></i>Sync Host (<span id="sync-host-count">0</span>)</button>
+      <button class="btn btn-s" onclick="syncLocalSessions()"><i class="ti ti-calendar"></i>Sync Sesi (<span id="sync-sess-count">0</span>)</button>
+    </div>
+    <div id="sync-status" style="margin-top:8px;font-size:12px;color:var(--t3)"></div>
+  </div></div>
 </div>
 
   </div><!-- /content -->
@@ -746,6 +755,56 @@ function updateMobileBar() {
   }
 }
 
+async function syncLocalHosts() {
+  const local = loadLocalHosts();
+  if(!local || !local.length) { showToast('Tidak ada data host lokal','err'); return; }
+  const localOnly = local.filter(h=>h.id&&h.id.startsWith('local-'));
+  if(!localOnly.length) { showToast('Semua host sudah di database'); return; }
+  let ok=0, fail=0;
+  for(const h of localOnly) {
+    const {id, ...row} = h;
+    try {
+      const {data,error} = await sb.from('hosts').insert([{...row,is_active:true}]).select();
+      if(error) throw error;
+      // Update local id
+      const idx = hosts.findIndex(x=>x.id===h.id);
+      if(idx>=0) hosts[idx].id = data[0].id;
+      ok++;
+    } catch(e) { fail++; }
+  }
+  saveLocalHosts();
+  document.getElementById('sync-status').textContent = `✓ ${ok} host berhasil sync${fail?', '+fail+' gagal':''}`;
+  showToast(ok+' host berhasil sync ke Supabase!');
+}
+
+async function syncLocalSessions() {
+  const local = loadLocalSessions();
+  if(!local || !local.length) { showToast('Tidak ada data sesi lokal','err'); return; }
+  const localOnly = local.filter(s=>s.id&&s.id.startsWith('local-'));
+  if(!localOnly.length) { showToast('Semua sesi sudah di database'); return; }
+  let ok=0, fail=0;
+  for(const sess of localOnly) {
+    const {id, ...row} = sess;
+    try {
+      const {data,error} = await sb.from('sessions').insert([row]).select();
+      if(error) throw error;
+      const idx = sessions.findIndex(x=>x.id===sess.id);
+      if(idx>=0) sessions[idx].id = data[0].id;
+      ok++;
+    } catch(e) { fail++; }
+  }
+  saveLocalSessions();
+  document.getElementById('sync-status').textContent = `✓ ${ok} sesi berhasil sync${fail?', '+fail+' gagal':''}`;
+  showToast(ok+' sesi berhasil sync ke Supabase!');
+}
+
+function updateSyncCounts() {
+  const h = loadLocalHosts(); const hc = document.getElementById('sync-host-count');
+  if(hc) hc.textContent = h ? h.filter(x=>x.id?.startsWith('local-')).length : 0;
+  const se = loadLocalSessions(); const sc = document.getElementById('sync-sess-count');
+  if(sc) sc.textContent = se ? se.filter(x=>x.id?.startsWith('local-')).length : 0;
+}
+
 function detectMobile() {
   const isMobile = window.innerWidth <= 768;
   if(isMobile) {
@@ -801,11 +860,21 @@ async function loadBrands() {
 async function loadHosts() {
   try {
     const {data,error} = await sb.from('hosts').select('*').eq('is_active',true).order('name');
-    if(error) throw error;
+    if(error) throw new Error(error.message);
     hosts = data||[];
+    if(hosts.length > 0) saveLocalHosts();
   } catch(e) {
-    console.warn('loadHosts:',e.message);
-    useDemoHosts();
+    console.warn('loadHosts DB error:', e.message);
+    const cached = loadLocalHosts();
+    if(cached && cached.length > 0) {
+      hosts = cached;
+      showBanner('⚠️ Supabase offline — data lokal (' + hosts.length + ' host). Buka Settings → Sync untuk upload.', '#d97706');
+      setTimeout(hideBanner, 6000);
+    } else {
+      useDemoHosts();
+      showBanner('⚠️ Jalankan RLS policies di Supabase agar data tersimpan permanen', '#d97706');
+      setTimeout(hideBanner, 8000);
+    }
   }
   populateHostUI();
 }
@@ -816,8 +885,16 @@ async function loadSessions() {
     const {data,error} = await sb.from('sessions').select('*').gte('session_date',s).lte('session_date',e);
     if(error) throw error;
     sessions = data||[];
+    if(sessions.length > 0) saveLocalSessions();
   } catch(ex) {
-    sessions = getDemoSessions();
+    console.warn('loadSessions error:', ex.message);
+    // Try localStorage
+    const cachedAll = loadLocalSessions();
+    if(cachedAll && cachedAll.length > 0) {
+      sessions = cachedAll.filter(x=>x.session_date>=s && x.session_date<=e);
+    } else {
+      sessions = [];
+    }
   }
 }
 
@@ -1302,7 +1379,7 @@ async function saveHost() {
       if(error) throw error;
       hosts.push(data[0]);
     }
-    showToast('Host disimpan!');
+    saveLocalHosts(); showToast('Host disimpan!');
   } catch(e) {
     if(id) { const idx=hosts.findIndex(h=>h.id===id); if(idx>=0) hosts[idx]={...hosts[idx],...row}; }
     else hosts.push({...row, id:'demo-'+Date.now()});
@@ -1319,6 +1396,7 @@ async function deleteHost() {
     await sb.from('hosts').update({is_active:false}).eq('id',id);
   } catch(e) {}
   hosts = hosts.filter(h=>h.id!==id);
+  saveLocalHosts();
   closeModal('host'); populateHostUI(); renderHosts(); showToast('Host dihapus');
 }
 
@@ -1529,7 +1607,7 @@ async function saveSession() {
     } else {
       const {data,error}=await sb.from('sessions').insert([row]).select();
       if(error) throw error;
-      sessions.push(data[0]); showToast('Sesi disimpan!');
+      sessions.push(data[0]); saveLocalSessions(); showToast('Sesi disimpan!');
     }
   } catch(e) {
     if(editId){const idx=sessions.findIndex(s=>s.id===editId);if(idx>=0)sessions[idx]={...sessions[idx],...row};}
@@ -1576,6 +1654,7 @@ async function deleteSession(sid) {
   if(!confirm('Hapus sesi ini?')) return;
   try { await sb.from('sessions').delete().eq('id',sid); } catch(e){}
   sessions = sessions.filter(s=>s.id!==sid);
+  saveLocalSessions();
   renderSched(); showToast('Sesi dihapus');
 }
 
