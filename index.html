@@ -177,6 +177,35 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-d
 .htags{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
 .htag{font-size:11px;background:var(--bg);border:.5px solid var(--border2);border-radius:20px;padding:2px 7px;display:flex;align-items:center;gap:3px}
 .htag button{background:none;border:none;cursor:pointer;color:var(--t3);padding:0;font-size:10px;line-height:1}
+
+/* ── MOBILE RESPONSIVE ── */
+@media(max-width:768px){
+  .sidebar{display:none!important}
+  .content{padding:.75rem}
+  .stats{grid-template-columns:1fr 1fr;gap:7px}
+  .stat-v{font-size:16px}
+  .topbar{padding:.5rem .75rem;gap:6px}
+  .topbar h2{font-size:13px}
+  .sched-wrap{max-height:calc(100vh - 190px)}
+  .sg{min-width:480px}
+  .sg th,.sg td{padding:2px 1px}
+  .sg .td-t{font-size:9px;width:42px}
+  .modal{width:96vw!important;max-width:96vw!important;padding:1rem}
+  .fg-row,.fg-row3{grid-template-columns:1fr}
+  .dt th,.dt td{padding:5px 6px;font-size:12px}
+  .card .cb{padding:.75rem}
+  #sb-toggle-btn{display:none}
+  .sched-toolbar{gap:4px;flex-wrap:wrap}
+  .view-tabs .vt{padding:4px 8px;font-size:11px}
+  .chips .chip{padding:3px 8px;font-size:11px}
+  .nav-btns{margin-left:0}
+  .nav-btns span{min-width:90px;font-size:11px}
+  .qa-popup{width:90vw!important;left:5vw!important}
+}
+@media(max-width:480px){
+  .stats{grid-template-columns:1fr}
+  .topbar-r .btn-s{display:none}
+}
 </style>
 </head>
 <body>
@@ -643,7 +672,29 @@ let selHosts=[];
 let invLineN=0;
 
 // ── INIT ─────────────────────────────────────────────────────
+// Auto-detect mobile and set compact view
+function detectMobile() {
+  const isMobile = window.innerWidth <= 768;
+  if(isMobile) {
+    // On mobile: default to compact week view, hide sidebar features
+    schedView = 'week';
+    if(typeof gridSize !== 'undefined') gridSize = 'compact';
+    // Add mobile-specific UI hints
+    const banner = document.getElementById('conn-banner');
+    if(banner && isMobile && !localStorage.getItem('mobile-hint-shown')) {
+      banner.style.display = 'block';
+      banner.style.background = '#2563eb';
+      banner.textContent = '📱 Tip: Scroll kanan untuk lihat hari lain · Tap cell untuk tambah jadwal';
+      setTimeout(()=>{ banner.style.display='none'; }, 5000);
+      localStorage.setItem('mobile-hint-shown','1');
+    }
+  }
+  return isMobile;
+}
+window.addEventListener('resize', ()=>detectMobile());
+
 async function init() {
+  detectMobile();
   const today = new Date().toISOString().split('T')[0];
   setVal('f-date', today); setVal('lm-date', today); setVal('im-date', today);
   setVal('ld-month', today.slice(0,7));
@@ -2023,11 +2074,7 @@ function renderAgency() {
       <td colspan="8" style="padding:6px 16px 10px 32px">
         <div style="font-size:11px;font-weight:600;color:var(--t3);margin-bottom:5px;text-transform:uppercase;letter-spacing:.04em">Detail COGS — ${p.brand} ${p.period}</div>
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:4px">
-          ${(p.cogs_detail||[]).map(c=>`
-            <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 8px;background:var(--surface);border-radius:4px;border:.5px solid var(--border)">
-              <span style="color:var(--t2)">${c.label}</span>
-              <span style="font-weight:500">Rp ${c.amt.toLocaleString('id')}</span>
-            </div>`).join('')}
+          ${(p.cogs_detail||[]).map(c=>'<div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 8px;background:var(--surface);border-radius:4px;border:.5px solid var(--border)"><span style="color:var(--t2)">'+c.label+'</span><span style="font-weight:500">Rp '+Number(c.amt).toLocaleString('id')+'</span></div>').join('')}
         </div>
         <div style="margin-top:6px;padding:4px 8px;background:var(--surface);border-radius:4px;display:flex;justify-content:space-between;font-size:12px;font-weight:600;border:.5px solid var(--border2)">
           <span>Total COGS</span><span>Rp ${p.total_cogs.toLocaleString('id')}</span>
@@ -2231,6 +2278,7 @@ function applyEditAccess() {
   // Apply role-based visibility to all action buttons after DOM is ready
   document.querySelectorAll('.btn-p, .btn-d, .btn-s').forEach(btn => {
     if(btn.closest('#modal-login')) return;
+    if(btn.closest('.modal')) return; // Modal buttons always visible (modal itself is access-gated)
     const txt = btn.textContent.trim();
     if(['Logout','Masuk','Viewer','Batal','Refresh'].some(x=>txt.includes(x))) return;
     const oc = btn.getAttribute('onclick') || btn.id || '';
@@ -2335,7 +2383,7 @@ function getDemoSessions(){
 
 // ── ROLE-BASED ACCESS CONTROL ────────────────────────────────
 const ROLES = {
-  owner:  { pw: 'thx2026_owner_maududi$', label: 'Owner',    level: 4 },
+  owner:  { pw: 'thx2026owner', label: 'Owner',    level: 4 },
   pic:    { pw: 'thx2026pic',   label: 'PIC Host', level: 3 },
   team:   { pw: 'thx2026team',  label: 'Tim Ops',  level: 2 },
   viewer: { pw: '',             label: 'Viewer',   level: 1 },
