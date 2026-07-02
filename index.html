@@ -25,7 +25,7 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-d
 .layout{display:flex;flex:1;min-height:0;margin-top:0}
 /* SIDEBAR */
 .sidebar{width:210px;flex-shrink:0;background:var(--surface);border-right:.5px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;transition:width .25s cubic-bezier(.4,0,.2,1),min-width .25s cubic-bezier(.4,0,.2,1);overflow:hidden}
-.sidebar.collapsed{width:48px;min-width:48px}
+.sidebar.collapsed{width:0;min-width:0;border-right:none}
 .sidebar.collapsed .nav-sec,.sidebar.collapsed .sb-sub,.sidebar.collapsed .sb-logo{display:none}
 .sidebar.collapsed .ni-label{display:none}
 .sidebar.collapsed .ni{padding:7px;justify-content:center;font-size:0}
@@ -46,7 +46,7 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-d
 .sb-foot{padding:.85rem 1rem;border-top:.5px solid var(--border);font-size:11px;color:var(--t3)}
 /* MAIN */
 .main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
-.topbar{background:var(--surface);border-bottom:.5px solid var(--border);padding:.65rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px}
+.topbar{background:var(--surface);border-bottom:.5px solid var(--border);padding:.65rem 1.25rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:8px;min-width:0}
 .topbar h2{font-size:14px;font-weight:600;display:flex;align-items:center;gap:7px;white-space:nowrap}
 .topbar-r{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
 .content{flex:1;padding:1.25rem;overflow-y:auto}
@@ -185,15 +185,9 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-d
 
 <!-- SIDEBAR -->
 <div class="sidebar" id="main-sidebar">
-  <div class="sb-brand" style="display:flex;align-items:center;justify-content:space-between">
-    <div>
-      <div class="logo" id="sb-logo">THX Agency</div>
-      <div class="sub" id="sb-sub">Live Operation System</div>
-    </div>
-    <button onclick="toggleSidebar()" id="sb-toggle-btn" title="Sembunyikan sidebar"
-      style="background:none;border:.5px solid var(--border);border-radius:6px;padding:3px 6px;cursor:pointer;color:var(--t3);font-size:12px;flex-shrink:0">
-      <i class="ti ti-layout-sidebar-left-collapse" id="sb-toggle-icon"></i>
-    </button>
+  <div class="sb-brand">
+    <div class="logo" id="sb-logo">THX Agency</div>
+    <div class="sub" id="sb-sub">Live Operation System</div>
   </div>
   <div class="nav">
     <div class="nav-sec">Operasional</div>
@@ -215,7 +209,11 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-d
 <!-- MAIN -->
 <div class="main">
   <div class="topbar">
-    <h2 id="page-title"><i class="ti ti-calendar-week"></i>Live Scheduling</h2>
+    <button onclick="toggleSidebar()" id="sb-toggle-btn" title="Toggle sidebar"
+      style="background:none;border:.5px solid var(--border2);border-radius:6px;padding:5px 7px;cursor:pointer;color:var(--t2);font-size:13px;flex-shrink:0;margin-right:8px;line-height:1">
+      <i class="ti ti-layout-sidebar-left-collapse" id="sb-toggle-icon"></i>
+    </button>
+    <h2 id="page-title" style="flex:1"><i class="ti ti-calendar-week"></i>Live Scheduling</h2>
     <div class="topbar-r" id="topbar-actions">
       <button class="btn btn-s" onclick="refreshAll()"><i class="ti ti-refresh"></i>Refresh</button>
       <button class="btn btn-p" onclick="openModal('session')"><i class="ti ti-plus"></i>Tambah Sesi</button>
@@ -2171,6 +2169,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const icon=document.getElementById('sb-toggle-icon');
     if(sb) sb.classList.add('collapsed');
     if(icon) icon.className='ti ti-layout-sidebar-left-expand';
+  } else {
+    const icon=document.getElementById('sb-toggle-icon');
+    if(icon) icon.className='ti ti-layout-sidebar-left-collapse';
   }
 });
 
@@ -2287,6 +2288,9 @@ document.addEventListener('DOMContentLoaded', ()=>{
     const icon=document.getElementById('sb-toggle-icon');
     if(sb) sb.classList.add('collapsed');
     if(icon) icon.className='ti ti-layout-sidebar-left-expand';
+  } else {
+    const icon=document.getElementById('sb-toggle-icon');
+    if(icon) icon.className='ti ti-layout-sidebar-left-collapse';
   }
   // Try to restore session, otherwise show login
   if(!restoreSession()) {
