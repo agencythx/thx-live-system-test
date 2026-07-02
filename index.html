@@ -1086,6 +1086,8 @@ function openQA(e, date, hour) {
   brands.forEach(b=>bs.innerHTML+=`<option value="${b.id}">${b.name}</option>`);
   filterQA();
   pop.classList.add('open');
+  // Force show buttons inside popup regardless of role
+  pop.querySelectorAll('button').forEach(b=>b.style.display='');
 }
 
 function closeQA() { document.getElementById('qa-popup').classList.remove('open'); }
@@ -2349,11 +2351,17 @@ function applyRoleUI() {
 
 function applyEditAccess() {
   // Apply role-based visibility to all action buttons after DOM is ready
+  // First, restore all buttons inside modals/popups/topbar
+  document.querySelectorAll('#qa-popup button, .modal button, #topbar-actions button, #mobile-bar button, #mobile-menu-drawer button').forEach(b=>b.style.display='');
+  
   document.querySelectorAll('.btn-p, .btn-d, .btn-s').forEach(btn => {
     if(btn.closest('#modal-login')) return;
-    if(btn.closest('.modal')) return; // Modal buttons always visible (modal itself is access-gated)
+    if(btn.closest('.modal')) return; // Modal buttons always visible
+    if(btn.closest('#qa-popup')) return; // Quick-add popup buttons always visible
+    if(btn.closest('#mobile-bar')) return; // Mobile bar buttons always visible
+    if(btn.closest('#mobile-menu-drawer')) return;
     const txt = btn.textContent.trim();
-    if(['Logout','Masuk','Viewer','Batal','Refresh'].some(x=>txt.includes(x))) return;
+    if(['Logout','Masuk','Viewer','Batal','Refresh','Tambah Sesi'].some(x=>txt.includes(x))) return;
     const oc = btn.getAttribute('onclick') || btn.id || '';
     let minLevel = 2;
     // Finance & config actions - owner only
