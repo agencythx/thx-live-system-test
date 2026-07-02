@@ -26,7 +26,10 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-d
 /* SIDEBAR */
 .sidebar{width:210px;flex-shrink:0;background:var(--surface);border-right:.5px solid var(--border);display:flex;flex-direction:column;height:100vh;position:sticky;top:0;transition:width .25s cubic-bezier(.4,0,.2,1),min-width .25s cubic-bezier(.4,0,.2,1);overflow:hidden}
 .sidebar.collapsed{width:48px;min-width:48px}
-.sidebar.collapsed .nav-sec,.sidebar.collapsed .sb-sub,.sidebar.collapsed .sb-logo,.sidebar.collapsed .ni span,.sidebar.collapsed .nav-sec{display:none}
+.sidebar.collapsed .nav-sec,.sidebar.collapsed .sb-sub,.sidebar.collapsed .sb-logo{display:none}
+.sidebar.collapsed .ni-label{display:none}
+.sidebar.collapsed .ni{padding:7px;justify-content:center;font-size:0}
+.sidebar.collapsed .ni i{font-size:17px;margin:0}
 .sidebar.collapsed .ni{padding:8px;justify-content:center}
 .sidebar.collapsed .ni i{margin:0}
 .sidebar.collapsed .sb-brand{padding:.75rem .5rem;justify-content:center}
@@ -194,17 +197,17 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-d
   </div>
   <div class="nav">
     <div class="nav-sec">Operasional</div>
-    <button class="ni active" onclick="goPage('sched',this)"><i class="ti ti-calendar-week"></i>Scheduling</button>
-    <button class="ni" onclick="goPage('livedata',this)"><i class="ti ti-chart-line"></i>Live Data Report</button>
+    <button class="ni active" onclick="goPage('sched',this)"><i class="ti ti-calendar-week"></i><span class="ni-label">Scheduling</span></button>
+    <button class="ni" onclick="goPage('livedata',this)"><i class="ti ti-chart-line"></i><span class="ni-label">Live Data Report</span></button>
     <div class="nav-sec">Tim</div>
-    <button class="ni" onclick="goPage('hosts',this)"><i class="ti ti-users"></i>Host Management</button>
-    <button class="ni" onclick="goPage('payment',this)"><i class="ti ti-cash"></i>Payment Calc</button>
+    <button class="ni" onclick="goPage('hosts',this)"><i class="ti ti-users"></i><span class="ni-label">Host Management</span></button>
+    <button class="ni" onclick="goPage('payment',this)"><i class="ti ti-cash"></i><span class="ni-label">Payment Calc</span></button>
     <div class="nav-sec">Finance</div>
-    <button class="ni" onclick="goPage('agency',this)"><i class="ti ti-calculator"></i>Agency Calc</button>
-    <button class="ni" onclick="goPage('invoice',this)"><i class="ti ti-file-invoice"></i>Invoice</button>
+    <button class="ni" onclick="goPage('agency',this)"><i class="ti ti-calculator"></i><span class="ni-label">Agency Calc</span></button>
+    <button class="ni" onclick="goPage('invoice',this)"><i class="ti ti-file-invoice"></i><span class="ni-label">Invoice</span></button>
     <div class="nav-sec">Config</div>
-    <button class="ni" onclick="goPage('brands',this)"><i class="ti ti-building-store"></i>Brands & Akun</button>
-    <button class="ni" onclick="goPage('settings',this)"><i class="ti ti-settings"></i>Settings</button>
+    <button class="ni" onclick="goPage('brands',this)"><i class="ti ti-building-store"></i><span class="ni-label">Brands & Akun</span></button>
+    <button class="ni" onclick="goPage('settings',this)"><i class="ti ti-settings"></i><span class="ni-label">Settings</span></button>
   </div>
   <div class="sb-foot">THX v2.0</div>
 </div>
@@ -776,6 +779,7 @@ function renderSched() {
   document.getElementById('ss-h').textContent = new Set(filtered.flatMap(s=>s.host_ids||[])).size;
   updatePeriodLabel();
   if(schedView==='week') renderWeek(filtered);
+  if(currentLevel < 2) setTimeout(applyEditAccess, 50);
   else if(schedView==='month') renderMonth(filtered);
   else renderHostView(filtered);
 }
@@ -2119,6 +2123,12 @@ const PAGE_META = {
 };
 
 function goPage(id,el) {
+  // Role enforcement - check access level
+  const minLevel = PAGE_ACCESS[id] || 1;
+  if(currentLevel < minLevel) {
+    showToast('Akses ditolak — level tidak cukup','err');
+    return;
+  }
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.ni').forEach(n=>n.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
@@ -2200,19 +2210,47 @@ function getDemoSessions(){
 // ── ROLE UI ──────────────────────────────────────────────────
 function applyRoleUI() {
   const cfg = ROLES[currentRole] || ROLES.viewer;
-  // Update sidebar footer
+  // Update sidebar footer with role badge + logout
   const foot = document.querySelector('.sb-foot');
-  if(foot) foot.innerHTML = `<span style="font-size:10px;background:var(--abg);color:var(--accent);padding:2px 7px;border-radius:10px;font-weight:500">${cfg.label}</span>
-    <button onclick="logoutRole()" style="margin-left:6px;font-size:10px;background:none;border:.5px solid var(--border2);border-radius:4px;padding:1px 6px;cursor:pointer;color:var(--t3)">Logout</button>`;
-  // Show/hide nav items based on level
+  if(foot) foot.innerHTML = `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+    <span style="font-size:10px;background:var(--abg);color:var(--accent);padding:2px 8px;border-radius:10px;font-weight:600">${cfg.label}</span>
+    <button onclick="logoutRole()" style="font-size:10px;background:none;border:.5px solid var(--border2);border-radius:4px;padding:1px 6px;cursor:pointer;color:var(--t3)">Logout</button>
+  </div>`;
+  // Show/hide nav items
   document.querySelectorAll('.ni').forEach(btn => {
-    const onclickAttr = btn.getAttribute('onclick') || '';
-    const pageMatch = onclickAttr.match(/goPage\('(\w+)'/);
-    if(pageMatch) {
-      const page = pageMatch[1];
-      const minLevel = PAGE_ACCESS[page] || 1;
-      btn.style.display = currentLevel >= minLevel ? '' : 'none';
-    }
+    const a = btn.getAttribute('onclick') || '';
+    const m = a.match(/goPage\('(\w+)'/);
+    if(m) btn.style.display = currentLevel >= (PAGE_ACCESS[m[1]]||1) ? '' : 'none';
+  });
+  // Hide/show edit controls based on role
+  applyEditAccess();
+}
+
+function applyEditAccess() {
+  // Apply role-based visibility to all action buttons after DOM is ready
+  document.querySelectorAll('.btn-p, .btn-d, .btn-s').forEach(btn => {
+    if(btn.closest('#modal-login')) return;
+    const txt = btn.textContent.trim();
+    if(['Logout','Masuk','Viewer','Batal','Refresh'].some(x=>txt.includes(x))) return;
+    const oc = btn.getAttribute('onclick') || btn.id || '';
+    let minLevel = 2;
+    // Finance & config actions - owner only
+    if(/agency|Agency|invoice|Invoice|Brand|brand|Settings/i.test(oc)) minLevel = 4;
+    // Host & payment actions - PIC+
+    else if(/[Hh]ost|[Pp]aid|[Rr]ate|[Pp]ayment/i.test(oc)) minLevel = 3;
+    // Schedule & live data edit - team+
+    else if(/session|Session|livedata|quick/i.test(oc)) minLevel = 2;
+    btn.style.display = currentLevel >= minLevel ? '' : 'none';
+  });
+  // Disable grid click for viewers (read-only)
+  const canEdit = currentLevel >= 2;
+  document.querySelectorAll('.sg td[data-date], .cal-day').forEach(td=>{
+    td.style.pointerEvents = canEdit ? '' : 'none';
+    td.style.cursor = canEdit ? 'pointer' : 'default';
+  });
+  // Hide edit/delete buttons on session blocks for non-editors
+  document.querySelectorAll('.sb button').forEach(btn=>{
+    btn.style.display = canEdit ? '' : 'none';
   });
 }
 
