@@ -206,6 +206,12 @@ body{background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-d
   .stats{grid-template-columns:1fr}
   .topbar-r .btn-s{display:none}
 }
+
+#mobile-bar { display: none; }
+@media(max-width:768px) {
+  #mobile-bar { display: flex !important; }
+  .content { padding-bottom: 60px; }
+}
 </style>
 </head>
 <body>
@@ -673,6 +679,73 @@ let invLineN=0;
 
 // ── INIT ─────────────────────────────────────────────────────
 // Auto-detect mobile and set compact view
+function openMobileMenu() {
+  // Populate nav items based on current role
+  const nav = document.getElementById('mobile-nav-items');
+  if(!nav) return;
+  const pages = [
+    {id:'sched', icon:'ti-calendar-week', label:'Scheduling'},
+    {id:'livedata', icon:'ti-chart-line', label:'Live Data Report'},
+    {id:'hosts', icon:'ti-users', label:'Host Management'},
+    {id:'payment', icon:'ti-cash', label:'Payment Calc'},
+    {id:'agency', icon:'ti-calculator', label:'Agency Calc'},
+    {id:'invoice', icon:'ti-file-invoice', label:'Invoice'},
+    {id:'brands', icon:'ti-building-store', label:'Brands & Akun'},
+    {id:'settings', icon:'ti-settings', label:'Settings'},
+  ];
+  nav.innerHTML = pages
+    .filter(p => currentLevel >= (PAGE_ACCESS[p.id]||1))
+    .map(p => `<button onclick="goPageMobile('${p.id}')" style="display:flex;align-items:center;gap:10px;padding:10px 8px;border:none;background:none;width:100%;text-align:left;cursor:pointer;border-radius:var(--r);font-family:inherit;font-size:14px;color:var(--text)">
+      <i class="ti ${p.icon}" style="font-size:18px;color:var(--t2);width:22px"></i>${p.label}
+    </button>`).join('');
+  const roleEl = document.getElementById('mobile-menu-role');
+  const logoutEl = document.getElementById('mobile-logout-btn');
+  if(roleEl) roleEl.textContent = currentRole ? (ROLES[currentRole]?.label || '') : 'Belum login';
+  if(logoutEl) logoutEl.style.display = currentRole ? '' : 'none';
+  document.getElementById('mobile-menu-overlay').style.display = 'block';
+  document.getElementById('mobile-menu-drawer').style.display = 'block';
+}
+
+function closeMobileMenu() {
+  document.getElementById('mobile-menu-overlay').style.display = 'none';
+  document.getElementById('mobile-menu-drawer').style.display = 'none';
+}
+
+function goPageMobile(id) {
+  closeMobileMenu();
+  const btn = document.querySelector(`.ni[onclick*="goPage('${id}'"]`);
+  if(btn) btn.click();
+  else {
+    // fallback
+    const minLevel = PAGE_ACCESS[id]||1;
+    if(currentLevel >= minLevel) {
+      document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+      const page = document.getElementById('page-'+id);
+      if(page) page.classList.add('active');
+      const titles = {sched:'Live Scheduling',livedata:'Live Data Report',hosts:'Host Management',payment:'Payment Calc',agency:'Agency Calc',invoice:'Invoice',brands:'Brands & Akun',settings:'Settings'};
+      const icons = {sched:'ti-calendar-week',livedata:'ti-chart-line',hosts:'ti-users',payment:'ti-cash',agency:'ti-calculator',invoice:'ti-file-invoice',brands:'ti-building-store',settings:'ti-settings'};
+      document.getElementById('page-title').innerHTML = `<i class="ti ${icons[id]||'ti-grid'}"></i>${titles[id]||id}`;
+    }
+  }
+}
+
+function updateMobileBar() {
+  const bar = document.getElementById('mobile-bar');
+  const loginBtn = document.getElementById('mobile-login-btn');
+  const roleLabel = document.getElementById('mobile-role-label');
+  if(!bar) return;
+  if(currentRole && currentRole !== 'viewer') {
+    if(loginBtn) loginBtn.style.display = 'none';
+    if(roleLabel) roleLabel.innerHTML = `<span style="background:var(--abg);color:var(--accent);padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600">${ROLES[currentRole]?.label||''}</span>`;
+  } else if(currentRole === 'viewer') {
+    if(loginBtn) { loginBtn.style.display=''; loginBtn.textContent='Login'; loginBtn.innerHTML='<i class="ti ti-login"></i> Login'; }
+    if(roleLabel) roleLabel.innerHTML = '<span style="font-size:11px;color:var(--t3)">Mode viewer</span>';
+  } else {
+    if(loginBtn) loginBtn.style.display = '';
+    if(roleLabel) roleLabel.textContent = 'Belum login';
+  }
+}
+
 function detectMobile() {
   const isMobile = window.innerWidth <= 768;
   if(isMobile) {
@@ -2412,6 +2485,7 @@ function loginAs(role) {
   const modal = document.getElementById('modal-login');
   if(modal) modal.style.display = 'none';
   applyRoleUI();
+  updateMobileBar();
   init();
 }
 
@@ -2434,6 +2508,7 @@ function logoutRole() {
   if(modal) modal.style.display = 'flex';
   const pw = document.getElementById('login-pw');
   if(pw) pw.value = '';
+  updateMobileBar();
 }
 
 function restoreSession() {
@@ -2442,5 +2517,29 @@ function restoreSession() {
   return false;
 }
 </script>
+
+<!-- MOBILE BOTTOM BAR -->
+<div id="mobile-bar" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:150;background:var(--surface);border-top:.5px solid var(--border);padding:6px 12px 10px;display:flex;gap:6px;align-items:center">
+  <div style="flex:1;font-size:11px;color:var(--t2)" id="mobile-role-label">Belum login</div>
+  <button onclick="openMobileMenu()" style="background:none;border:.5px solid var(--border2);border-radius:var(--r);padding:6px 12px;font-size:12px;cursor:pointer;color:var(--t2);font-family:inherit;display:flex;align-items:center;gap:5px">
+    <i class="ti ti-menu-2"></i> Menu
+  </button>
+  <button onclick="document.getElementById('modal-login').style.display='flex'" id="mobile-login-btn"
+    style="background:var(--accent);color:#fff;border:none;border-radius:var(--r);padding:6px 12px;font-size:12px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:5px">
+    <i class="ti ti-login"></i> Login
+  </button>
+</div>
+
+<!-- MOBILE MENU DRAWER -->
+<div id="mobile-menu-overlay" onclick="closeMobileMenu()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:160"></div>
+<div id="mobile-menu-drawer" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:170;background:var(--surface);border-radius:16px 16px 0 0;padding:1rem;max-height:80vh;overflow-y:auto">
+  <div style="width:40px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 1rem"></div>
+  <div style="font-size:12px;font-weight:600;color:var(--t3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em">Menu</div>
+  <div id="mobile-nav-items" style="display:flex;flex-direction:column;gap:2px"></div>
+  <div style="margin-top:12px;padding-top:12px;border-top:.5px solid var(--border);display:flex;gap:8px">
+    <span id="mobile-menu-role" style="font-size:12px;color:var(--t2);flex:1;display:flex;align-items:center"></span>
+    <button onclick="logoutRole();closeMobileMenu()" id="mobile-logout-btn" style="display:none;font-size:12px;padding:6px 12px;border:.5px solid var(--border2);border-radius:var(--r);background:none;cursor:pointer;color:var(--t2);font-family:inherit">Logout</button>
+  </div>
+</div>
 </body>
 </html>
